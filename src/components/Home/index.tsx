@@ -1,9 +1,17 @@
 import * as React from 'react';
 
 const Home = () => (
-    <div>
-        HOME of NFL Picks
-    </div>
+    <>
+        <h1>
+            NFL Picks
+        </h1>
+        <div>
+            HOME of NFL Picks
+        </div>
+        <div>
+            Footer
+        </div>
+    </>
 )
 
 export default Home

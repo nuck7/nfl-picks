@@ -1,6 +1,5 @@
 import React from "react";
 import { Box, Grid, Grommet, Main } from 'grommet';
-// import { Sheet } from './Sheet';
 import {
     BrowserRouter as Router,
     Routes,
@@ -10,47 +9,50 @@ import {
 import NewWeekForm from "../components/NewWeekForm";
 import Home from "../components/Home";
 import NavBar from "../components/NavBar";
-import SideBar from "../components/SideBar";
-import { SideBarContainer } from "./index.styles";
+import ProfileMenu from "../components/ProfileMenu";
+import AppMenu from "../components/AppMenu";
+import { MainContainer, Theme } from "./index.styles";
+import { color } from "../theme";
 
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
+    const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
     return (
-        <>
-
+        <Grommet theme={Theme}>
             <Grid
-                rows={['auto', 'flex']}
-                columns={['auto', 'flex']}
+                rows={['auto', 'flex', 'auto']}
+                columns={['small', 'auto', 'small']}
                 gap="small"
                 areas={[
-                    { name: 'nav', start: [0, 0], end: [1, 0] },
-                    { name: 'sidenav', start: [0, 1], end: [0, 1] },
+                    { name: 'nav', start: [0, 0], end: [2, 0] },
+                    { name: 'appNav', start: [0, 1], end: [0, 1] },
                     { name: 'main', start: [1, 1], end: [1, 1] },
+                    { name: 'profileNav', start: [2, 1], end: [2, 1] },
                 ]}
             >
-                <Box gridArea="nav" background="brand">
-                    <NavBar open={showSideBar} setOpen={setShowSideBar} />
+                <Box gridArea="nav" overflow="auto" background={color.black}>
+                    <NavBar
+                        openSideBar={showSideBar}
+                        setSideBar={setShowSideBar}
+                        openProfileMenu={showProfileMenu}
+                        setProfileMenu={setShowProfileMenu}
+                    />
                 </Box>
                 {showSideBar ? (
-                    <Box gridArea="sidenav"
-                        background="dark-1"
-                        width="small"
-                        animation={[
-                            { type: 'fadeIn', duration: 300 },
-                            { type: 'slideRight', size: 'xlarge', duration: 150 },
-                        ]}>
-                        <SideBar />
-                    </Box>
+                    <AppMenu />
                 ) : null}
-                <Box gridArea="main" background="light-1" alignContent="center"  align="center">
+                <MainContainer gridArea="main" background={color.white} alignContent="center" align="center">
                     <Routes>
                         <Route path='/' element={<Home />} />
                         <Route path='new-week-form' element={<NewWeekForm />} />
                     </Routes>
-                </Box>
+                </MainContainer>
+                {showProfileMenu ? (
+                    <ProfileMenu />
+                ) : null}
             </Grid>
-        </>
+        </Grommet>
     )
 }
 

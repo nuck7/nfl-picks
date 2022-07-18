@@ -1,24 +1,22 @@
 import React from 'react';
-import { Avatar, Button, Clock, Nav, Sidebar } from 'grommet';
-import { Help, Projects } from "grommet-icons";
-import { SideBarOptions } from "../../constants";
+import { Avatar, Button, Nav, Sidebar } from 'grommet';
 import { Link } from 'react-router-dom';
+import { MenuOption } from '../../types';
 
-const SideBar = () => (
-    <Sidebar round="small"
-        header={
-            <Avatar src="//s.gravatar.com/avatar/b7fb138d53ba0f573212ccce38a7c43b?s=80" />
-        }
-    // footer={
-    //     <Button icon={<Help />} hoverIndicator />
-    // }
-    >
+interface Props {
+    options: MenuOption[]
+}
+
+const SideBar:React.FC<Props> = ({options}) => {
+    return (
+    <Sidebar round="small">
         <Nav gap="small">
-            {SideBarOptions.map((option) => (
+            {options.map((option: MenuOption) => (
                 <Button href={option.link}>{option.label}</Button>
             ))}
         </Nav>
     </Sidebar>
 )
+            }
 
 export default SideBar

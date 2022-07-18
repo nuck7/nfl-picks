@@ -1,5 +1,9 @@
+import { Nav } from 'grommet';
 import styled from 'styled-components';
+import { color } from '../../theme';
 
-export const Container = styled.div`
-    
+export const StyledNav = styled(Nav)`
+    display: flex;
+    justify-content: space-between;
+    background: ${color.black};
 `

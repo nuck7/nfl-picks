@@ -1,63 +1,77 @@
-import * as React from 'react';
-import { useFormik } from 'formik';
-import { match } from 'assert';
-import SelectField from '../Select';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getTeams } from '../../resources/nfl-picks-server';
+import { DropdownOption, Team } from '../../types';
+import { matchupList } from '../../constants';
+import { Button, Form, FormField, Select, TextInput } from 'grommet';
+import { MatchupContainer, MatchupLabel, TeamSelectContainer, StyledFormField, SubmitButton, AtContainer, FormFieldLabel } from './index.styles';
+import SelectField from '../SelectField';
+import CustomFormField from '../CustomFormField';
 
 const NewWeekForm = () => {
-    // Pass the useFormik() hook initial form values and a submit function that will
-    // be called when the form is submitted
-    const formik = useFormik({
-        initialValues: {
-            matchups: '',
-        },
-        onSubmit: values => {
-            alert(JSON.stringify(values, null, 2));
-        },
-    });
-    const [matchupSelctions, setMatchupSelctions] = React.useState({
-        
-    });
+    const [value, setValue] = useState({});
+    const [teams, setTeams] = useState<Team[]>([])
+    const [weekName, setWeekName] = useState('');
 
-
-    const matchups = [
-        {
-            "home_team": "Dallas Cowboys",
-            "away_team": "Denver Broncos"
-        },
-        {
-            "home_team": "New England Patriots",
-            "away_team": "Pittsburg Steelers"
-        },
-        {
-            "home_team": "Los Angeles Rams",
-            "away_team": "New York Giants"
-        },
-        {
-            "home_team": "Los Angeles Chargers",
-            "away_team": "San Franciso 49ers"
+    useEffect(() => {
+        const fetchTeams = async () => {
+            const response = await getTeams()
+            setTeams(response)
         }
-    ]
+        fetchTeams().catch(console.error);
+    }, [])
+    const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
 
     return (
-        <form onSubmit={formik.handleSubmit}>
-            {matchups.map((matchup, index) => (
-                <>
-                <div>
-                    {`${matchup.away_team} @ ${matchup.home_team}`}
-                </div>
-                    <label htmlFor={`Matchup ${index}`}></label>
-                    <SelectField
-                        id={`matchup${index}`}
-                        name={`matchup${index}`}
-                        onChange={formik.handleChange}
-                        options={[matchup.away_team, matchup.home_team]}
-                        value={''}
-                    />
-                </>
-            ))
-            }
-            <button type="submit">Submit</button>
-        </form>
+        <Form
+            value={value}
+            onChange={onChange}
+            onSubmit={() => console.log("Submit", value)}
+            onReset={() => setValue({})}
+        >
+            <CustomFormField name={'week_number'} label={"Week Number"}>
+                <TextInput
+                    placeholder="Enter Week Number"
+                    name={'week_number'}
+                    value={weekName}
+                    onChange={event => setWeekName(event.target.value)}
+                />
+            </CustomFormField>
+            {matchupList.map((matchupNumber) => (
+                <MatchupContainer>
+                    <MatchupLabel>{`Matchup ${matchupNumber}`}</MatchupLabel>
+                    <TeamSelectContainer>
+                        <StyledFormField name={`matchup_${matchupNumber}_away`} label={"Away Team"}>
+                            <SelectField
+                                id={`${matchupNumber}_awayteam`}
+                                label="Away Team"
+                                name={`matchup_${matchupNumber}_away`}
+                                options={teams}
+                                value={''}
+                                labelKey={(option) => (
+                                    `${option.City} ${option.Name}`
+                                )}
+                                valueKey="ID"
+                            />
+                        </StyledFormField>
+                        <AtContainer>@</AtContainer>
+                        <StyledFormField name={`matchup_${matchupNumber}_home`} label={"Home Team"}>
+                            <SelectField
+                                id={`${matchupNumber}_hometeam`}
+                                label="Home Team"
+                                name={`matchup_${matchupNumber}_home`}
+                                options={teams}
+                                value={''}
+                                labelKey={(option) => (
+                                    `${option.City} ${option.Name}`
+                                )}
+                                valueKey="ID"
+                            />
+                        </StyledFormField>
+                    </TeamSelectContainer>
+                </MatchupContainer>
+            ))}
+            <SubmitButton primary size="large" type="submit"> Submit</SubmitButton>
+        </Form>
     );
 }
 

@@ -1,4 +1,4 @@
-export const SideBarOptions = [
+export const AppMenuOptions = [
     {
         label: "Home",
         link: "/"
@@ -10,6 +10,21 @@ export const SideBarOptions = [
     {
         label: "Start New Week",
         link: "new-week-form"
+    }
+]
+
+export const ProfileMenuOptions = [
+    {
+        label: "Profile",
+        link: "/profile"
+    },
+    {
+        label: "Log In",
+        link: "/"
+    },
+    {
+        label: "Log Out",
+        link: "/"
     }
 ]
 
@@ -47,3 +62,137 @@ export const TeamNames = [
     'Tennessee Titans',
     'Washington Commanders',
 ]
+
+export const Teams = [
+    {
+        name: 'Cardinals',
+        city: 'Arizona'
+    },
+
+    {
+        name: 'Atlanta',
+        city: 'Falcons',
+    },
+    {
+        name: 'Ravens',
+        city: 'Baltimore'
+    },
+    {
+        name: 'Bills',
+        city: 'Buffalo'
+    },
+    {
+        name: 'Panthers',
+        city: 'Carolina'
+    },
+    {
+        name: 'Bears',
+        city: 'Chicago'
+    },
+    {
+        name: 'Bengals',
+        city: 'Cincinnati'
+    },
+    {
+        name: 'Browns',
+        city: 'Cleveland'
+    },
+    {
+        name: 'Cowboys',
+        city: 'Dallas'
+    },
+    {
+        name: 'Broncos',
+        city: 'Denver'
+    },
+    {
+        name: 'Lions',
+        city: 'Detroit'
+    },
+    {
+        name: 'Packers',
+        city: 'Green Bay'
+    },
+    {
+        name: 'Texans',
+        city: 'Houston'
+    },
+    {
+        name: 'Colts',
+        city: 'Indianapolis'
+    },
+    {
+        name: 'Jaguars',
+        city: 'Jacksonville'
+    },
+    {
+        name: 'Chiefs',
+        city: 'Kansas City'
+    },
+    {
+        name: 'Raiders',
+        city: 'Las Vegas'
+    },
+    {
+        name: 'Chargers',
+        city: 'Los Angeles'
+    },
+    {
+        name: 'Rams',
+        city: 'Los Angeles'
+    },
+    {
+        name: 'Dolphins',
+        city: 'Miami'
+    },
+    {
+        name: 'Vikings',
+        city: 'Minnesota'
+    },
+    {
+        name: 'Patriots',
+        city: 'New England'
+    },
+    {
+        name: 'Saints',
+        city: 'New Orleans'
+    },
+    {
+        name: 'Giants',
+        city: 'New York'
+    },
+    {
+        name: 'Jets',
+        city: 'New York'
+    },
+    {
+        name: 'Eagles',
+        city: 'Philadelphia'
+    },
+    {
+        name: 'Steelers',
+        city: 'Pittsburgh'
+    },
+    {
+        name: '49ers',
+        city: 'San Francisco'
+    },
+    {
+        name: 'Seahawks',
+        city: 'Seattle'
+    },
+    {
+        name: 'Buccaneers',
+        city: 'Tampa Bay'
+    },
+    {
+        name: 'Titans',
+        city: 'Tennessee'
+    },
+    {
+        name: 'Commanders',
+        city: 'Washington'
+    }
+]
+
+export const matchupList = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
