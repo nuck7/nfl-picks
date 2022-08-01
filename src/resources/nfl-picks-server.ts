@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios'
-import { CreateMatchupInput, CreatePickInput, CreateWeekInput, Team } from '../types';
+import { CreateMatchupInput, CreatePickInput, CreateWeekInput, Team, Week } from '../types';
 
 export const getTeams = async () => {
     const teams: AxiosResponse<Team[]> = await axios({
@@ -9,12 +9,25 @@ export const getTeams = async () => {
     return teams?.data || []
 }
 
+export const getWeekById = async (id: number) => {
+    const week: AxiosResponse<Week> = await axios({
+        method: 'get',
+        url: 'http://localhost:8091/weekMatchups',
+        params: {
+            id: id,
+            includeMatchups: true
+        }
+    });
+    return week?.data || []
+}
+
 export const createWeek = async (week: CreateWeekInput) => {
-    const response: AxiosResponse<Team[]> = await axios({
+    const response: AxiosResponse<Team> = await axios({
         method: 'post',
         url: 'http://localhost:8091/week',
         headers: { "Content-Type": "application/json" },
         data: {
+            Name: week.Name,
             Start: week.Start,
             End: week.End,
         }

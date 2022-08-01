@@ -1,6 +1,6 @@
 import * as Router from 'koa-router';
 import * as ReactDOMServer from 'react-dom/server';
-import NewWeekForm from '../../src/NewWeekForm';
+import NewWeekForm from '../../src/components/NewWeekForm';
 
 const router = new Router()
 
@@ -14,7 +14,13 @@ router.get('/', async (ctx, next) => {
   return next()
 })
 
-router.get('/new-week-form', async (ctx, next) => {
+router.get('/week-form', async (ctx, next) => {
+  ctx.body = await NewWeekForm()
+
+  return next()
+})
+
+router.get('/pick-form', async (ctx, next) => {
   ctx.body = await NewWeekForm()
 
   return next()

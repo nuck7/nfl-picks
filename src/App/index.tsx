@@ -17,7 +17,7 @@ import { color } from "../theme";
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-
+    console.log('MAIN INDEX')
     return (
         <Grommet theme={Theme}>
             <Grid
@@ -45,7 +45,10 @@ const App = () => {
                 <MainContainer gridArea="main" background={color.white} alignContent="center" align="center">
                     <Routes>
                         <Route path='/' element={<Home />} />
-                        <Route path='new-week-form' element={<NewWeekForm />} />
+                        <Route path='week-form' element={<NewWeekForm />} />
+                        <Route path='week-form/:weekId' element={<NewWeekForm />} />
+                        <Route path='pick-form' element={<NewWeekForm />} />
+                        <Route path='pick-form/:pickId' element={<NewWeekForm />} />
                     </Routes>
                 </MainContainer>
                 {showProfileMenu ? (

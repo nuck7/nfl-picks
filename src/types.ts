@@ -44,11 +44,12 @@ export type Pick = {
 
 export type Week = {
     ID: number,
+    Name: string,
     Start: string,
     End: string,
     CreatedAt: string,
     UpdatedAt: string
-    Matches: null
+    Matchups: Team[]
 }
 
 export type DropdownOption = {
@@ -69,11 +70,36 @@ export type CreatePickInput = {
 }
 
 export type CreateWeekInput = {
+    Name: string,
     Start: string,
     End: string
 }
 
-export type NewWeekFormValues = {
-    week_number: string,
-    
+type FormMatchup = {
+    home: Team,
+    away: Team
+}
+
+export type WeekFormValues = {
+    name: string,
+    start_date: string,
+    end_date: string,
+    matchups: FormMatchup[]
+}
+
+export type MatchupTeams = {
+    ID:      number,
+	HomeTeamID:   number,
+	HomeTeamName: string,
+	AwayTeamID:   number,
+	AwayTeamName: string,
+	WeekID:       number
+}
+
+export type WeekMatchupAPI = {
+    ID: number
+    Name: string,
+    Start: string,
+    End: string,
+    Matchups: MatchupTeams[]
 }

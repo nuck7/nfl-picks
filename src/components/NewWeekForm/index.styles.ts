@@ -39,3 +39,9 @@ export const FormFieldLabel = styled(FormField)`
         font-size: ${fontSize.medium};
     };
 `
+
+export const DateContainer = styled.div`
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+`

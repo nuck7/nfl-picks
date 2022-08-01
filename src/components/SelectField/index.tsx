@@ -1,6 +1,5 @@
 import React, { ReactNode } from 'react';
-import { FormField, Select } from 'grommet';
-// import { StyledFormField, StyledSelect } from './index.styles';
+import { Select } from 'grommet';
 
 interface Props {
     name: string,
@@ -8,6 +7,7 @@ interface Props {
     id: string,
     options: Array<any>,
     value: string,
+    onChange: (event: any) => void,
     labelKey: string | ((...args: any[]) => ReactNode) | undefined,
     valueKey?: string | {
         key: string;
@@ -21,12 +21,11 @@ const SelectField: React.FC<Props> = ({
     id,
     options,
     value,
+    onChange,
     labelKey,
     valueKey = "ID",
     ...props
 }: Props) => {
-    // const [state, setState] = React.useState({ value, options })
-
     return (
         <Select
             name={name}
@@ -35,6 +34,7 @@ const SelectField: React.FC<Props> = ({
             //     const regexp = new RegExp(searchText, 'i');
             //     setState({ value, options: options.filter(o => o.match(regexp)) });
             // }}
+            onChange={onChange}
             clear={true}
             labelKey={labelKey}
             valueKey={valueKey}
