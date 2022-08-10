@@ -75,9 +75,21 @@ export type CreateWeekInput = {
     End: string
 }
 
+type FormTeam = {
+
+}
+
 type FormMatchup = {
-    home: Team,
-    away: Team
+    home: {
+        ID:   number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID:   number,
+        City: string,
+        Name: string,
+    }
 }
 
 export type WeekFormValues = {
@@ -90,13 +102,15 @@ export type WeekFormValues = {
 export type MatchupTeams = {
     ID:      number,
 	HomeTeamID:   number,
+    HomeTeamCity: string,
 	HomeTeamName: string,
 	AwayTeamID:   number,
+	AwayTeamCity: string,
 	AwayTeamName: string,
 	WeekID:       number
 }
 
-export type WeekMatchupAPI = {
+export type WeekMatchupsAPI = {
     ID: number
     Name: string,
     Start: string,

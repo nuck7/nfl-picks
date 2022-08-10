@@ -6,7 +6,7 @@ interface Props {
     label: string,
     id: string,
     options: Array<any>,
-    value: string,
+    value: string | number,
     onChange: (event: any) => void,
     labelKey: string | ((...args: any[]) => ReactNode) | undefined,
     valueKey?: string | {

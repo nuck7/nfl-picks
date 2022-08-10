@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTeams, getWeekById } from '../../resources/nfl-picks-server';
 import { Team } from '../../types';
-import { emptyWeekFormState, matchupList } from '../../constants';
+import { emptyWeekFormState } from '../../constants';
 import { DateInput, Form, TextInput } from 'grommet';
 import { MatchupContainer, MatchupLabel, TeamSelectContainer, StyledFormField, SubmitButton, AtContainer, FormFieldLabel, DateContainer } from './index.styles';
 import SelectField from '../SelectField';
@@ -28,9 +28,10 @@ const NewWeekForm = () => {
         if (weekId) {
             const getWeek = async () => {
                 const response = await getWeekById(parseInt(weekId))
-                console.log('Week by id', response)
+                // console.log('Week by id', response)
                 const formData = weekDbToForm(response)
-                // setFormState(formData)
+                setFormState(formData)
+                // console.log('Form state', formState)
             }
             getWeek().catch(console.error);
         }
@@ -86,8 +87,10 @@ const NewWeekForm = () => {
                     />
                 </CustomFormField>
             </DateContainer>
-            {matchupList.map((matchupNumber) => (
-                <MatchupContainer>
+            {formState.matchups.length ? formState.matchups.map((matchup, matchupNumber) => {
+                // console.log('matchup number', matchupNumber, formState?.matchups[matchupNumber])
+                return (
+                <MatchupContainer key={`matchup_cont_${matchupNumber}`}>
                     <MatchupLabel>{`Matchup ${matchupNumber}`}</MatchupLabel>
                     <TeamSelectContainer>
                         <StyledFormField name={`matchup_${matchupNumber}_away`} label={"Away Team"}>
@@ -96,10 +99,10 @@ const NewWeekForm = () => {
                                 label="Away Team"
                                 name={`matchup_${matchupNumber}_away`}
                                 options={teams}
-                                value={formState.matchups[matchupNumber-1].away}
+                                value={formState?.matchups[matchupNumber]?.away.ID}
                                 onChange={event => {
                                     let state = formState
-                                    state.matchups[matchupNumber-1].away = event.value
+                                    state.matchups[matchupNumber].away = event.value
                                     setFormState(state)
                                     console.log('formState', formState, matchupNumber, event.value)
                                 }}
@@ -116,10 +119,10 @@ const NewWeekForm = () => {
                                 label="Home Team"
                                 name={`matchup_${matchupNumber}_home`}
                                 options={teams}
-                                value={formState.matchups[matchupNumber-1].home}
+                                value={formState?.matchups[matchupNumber]?.home.ID}
                                 onChange={event => {
                                     let state = formState
-                                    state.matchups[matchupNumber-1].home = event.value
+                                    state.matchups[matchupNumber].home = event.value
                                     setFormState(state)
                                 }}
                                 labelKey={(option) => (
@@ -130,7 +133,7 @@ const NewWeekForm = () => {
                         </StyledFormField>
                     </TeamSelectContainer>
                 </MatchupContainer>
-            ))}
+            )}): null}
             <SubmitButton primary size="large" type="submit"> Submit</SubmitButton>
         </Form>
     );

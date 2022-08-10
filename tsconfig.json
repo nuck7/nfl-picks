@@ -10,10 +10,11 @@
       ],
       "strict": true,
       "sourceMap": true,
-      "target": "esnext",
+      "target": "esnext"
     },
     "exclude": [
       "node_modules",
-      "backend"
+      "backend",
+      "dist"
     ]
   }

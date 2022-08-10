@@ -1,5 +1,5 @@
 import { createMatchup, createWeek } from "../resources/nfl-picks-server"
-import { CreateWeekInput, WeekFormValues, Team, Week, WeekMatchupAPI } from "../types"
+import { CreateWeekInput, WeekFormValues, Team, Week, WeekMatchupsAPI } from "../types"
 
 export const submitNewWeekForm = async (weekFormValues: any) => {
     const week = weekFormToDb(weekFormValues)
@@ -28,10 +28,18 @@ export const weekFormToDb = (weekFormValues: WeekFormValues): CreateWeekInput =>
     return weekInput
 }
 
-export const weekDbToForm = (week: WeekMatchupAPI): WeekFormValues => {
+export const weekDbToForm = (week: WeekMatchupsAPI): WeekFormValues => {
     const matchups = week.Matchups.map(matchup => ({
-        home: matchup.HomeTeamID,
-        away: matchup.AwayTeamID
+        home: {
+            ID: matchup.HomeTeamID,
+            Name: matchup.HomeTeamName,
+            City: matchup.HomeTeamCity
+        },
+        away: {
+            ID: matchup.AwayTeamID,
+            Name: matchup.AwayTeamName,
+            City: matchup.AwayTeamCity
+        },
     }))
 
     const weekFormData = {
@@ -40,7 +48,7 @@ export const weekDbToForm = (week: WeekMatchupAPI): WeekFormValues => {
         end_date: week.End,
         matchups: matchups
     }
-
+    console.log('week form', weekFormData)
     return weekFormData
 }
 

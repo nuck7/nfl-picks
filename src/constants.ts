@@ -195,71 +195,189 @@ export const Teams = [
     }
 ]
 
-export const matchupList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-
 export const emptyWeekFormState = {
     name: '',
     start_date: '',
     end_date: '',
     matchups: [
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },{
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         },
         {
-            home: '',
-            away: ''
+            home: {
+                ID: 0,
+                City: '',
+                Name: '',
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
         }
     ]
 }
