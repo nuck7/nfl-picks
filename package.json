@@ -12,6 +12,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@babel/plugin-proposal-class-properties": "^7.16.7",
+    "@babel/preset-env": "^7.17.10",
     "@babel/preset-react": "^7.16.7",
     "@babel/preset-typescript": "^7.16.7",
     "@types/koa": "^2.13.4",
@@ -44,7 +45,7 @@
     "webpack-node-externals": "^3.0.0"
   },
   "dependencies": {
-    "@babel/preset-env": "^7.17.10",
+    "axios": "0.27.2",
     "formik": "^2.2.9",
     "global": "^4.4.0",
     "grommet": "^2.23.0",
