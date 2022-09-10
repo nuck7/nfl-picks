@@ -6,7 +6,7 @@ import {
     Route,
     Link
 } from "react-router-dom";
-import NewWeekForm from "../components/NewWeekForm";
+import WeekForm from "../components/WeekForm";
 import Home from "../components/Home";
 import NavBar from "../components/NavBar";
 import ProfileMenu from "../components/ProfileMenu";
@@ -17,7 +17,6 @@ import { color } from "../theme";
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-    console.log('MAIN INDEX')
     return (
         <Grommet theme={Theme}>
             <Grid
@@ -45,10 +44,11 @@ const App = () => {
                 <MainContainer gridArea="main" background={color.white} alignContent="center" align="center">
                     <Routes>
                         <Route path='/' element={<Home />} />
-                        <Route path='week-form' element={<NewWeekForm />} />
-                        <Route path='week-form/:weekId' element={<NewWeekForm />} />
-                        <Route path='pick-form' element={<NewWeekForm />} />
-                        <Route path='pick-form/:pickId' element={<NewWeekForm />} />
+                        <Route path='week/add' element={<WeekForm />} />
+                        <Route path='week/:weekId' element={<WeekForm />} />
+                        <Route path='picks' element={<WeekForm />} />
+                        <Route path='picks/:picksId' element={<WeekForm />} />
+                        <Route path='standings/:weekId' element={<WeekForm />} /> 
                     </Routes>
                 </MainContainer>
                 {showProfileMenu ? (

@@ -34,16 +34,12 @@ export const createWeek = async (week: CreateWeekInput) => {
     return response
 }
 
-export const createMatchup = async (matchup: CreateMatchupInput) => {
+export const createMatchups = async (matchups: CreateMatchupInput[]) => {
     const response: AxiosResponse<Team[]> = await axios({
         method: 'post',
-        url: 'http://localhost:8091/matchup',
+        url: 'http://localhost:8091/matchups',
         headers: { "Content-Type": "application/json" },
-        data: {
-            HomeTeamID: matchup.HomeTeamID,
-            AwayTeamID: matchup.AwayTeamID,
-            WeekID: matchup.WeekID
-        }
+        data: JSON.stringify(matchups)
     });
     return response
 }

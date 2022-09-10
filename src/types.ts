@@ -79,7 +79,7 @@ type FormTeam = {
 
 }
 
-type FormMatchup = {
+export type FormMatchup = {
     home: {
         ID:   number,
         City: string,

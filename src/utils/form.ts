@@ -1,18 +1,16 @@
-import { createMatchup, createWeek } from "../resources/nfl-picks-server"
-import { CreateWeekInput, WeekFormValues, Team, Week, WeekMatchupsAPI } from "../types"
+import { createMatchups, createWeek } from "../resources/nfl-picks-server"
+import { CreateWeekInput, WeekFormValues, FormMatchup, WeekMatchupsAPI, CreateMatchupInput } from "../types"
 
-export const submitNewWeekForm = async (weekFormValues: any) => {
-    const week = weekFormToDb(weekFormValues)
-    const createWeekResponse = await createWeek(week)
-    console.log('week id', createWeekResponse.data.ID)
-    const matchups = matchupFormToDb(weekFormValues.matchups, createWeekResponse.data.ID)
+export const submitNewWeekForm = async (weekFormValues: WeekFormValues) => {
+    // const week = weekFormToDb(weekFormValues)
+    // console.log('week to submit', week)
+
+    // const createWeekResponse = await createWeek(week)
+    // console.log('week id', createWeekResponse.data.ID)
+    const matchups = matchupFormToDb(weekFormValues.matchups, 12)//createWeekResponse.data.ID)
     console.log('matchups', matchups)
-    matchups.forEach(async (matchup: any) => {
-        console.log('matchup create payload ', matchup)
-
-        const createMatchupResponse = await createMatchup(matchup)
-        console.log('createMatchupResponse ', matchup, createMatchupResponse)
-    })
+    const createMatchupResponse = await createMatchups(matchups)
+    console.log('createMatchupResponse ', createMatchupResponse)
 }
 
 export const submitPickForm = () => {
@@ -52,15 +50,11 @@ export const weekDbToForm = (week: WeekMatchupsAPI): WeekFormValues => {
     return weekFormData
 }
 
-/* tslint:disable-next-line */
-export const matchupFormToDb = (matchupFormValues: any, weekId: number) => {
-    const matchups = matchupFormValues.filter((matchup: { home: number }) => matchup.home).map(async (matchup: { home: { ID: any }; away: { ID: any } }) => {
-        console.log('matchup db ', matchup)
-        return {
-            WeekID: weekId,
-            HomeTeamID: matchup.home.ID,
-            AwayTeamID: matchup.away.ID
-        }
-})
+export const matchupFormToDb = (matchupFormValues: FormMatchup[], weekId: number): CreateMatchupInput[] => {
+    const matchups = matchupFormValues.filter((matchup) => matchup?.home?.ID != 0).map((matchup) => ({
+        WeekID: weekId,
+        HomeTeamID: matchup.home.ID,
+        AwayTeamID: matchup.away.ID
+    }))
     return matchups
 }

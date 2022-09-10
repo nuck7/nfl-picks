@@ -9,7 +9,7 @@ import CustomFormField from '../CustomFormField';
 import { useParams } from 'react-router-dom';
 import { submitNewWeekForm, weekDbToForm } from '../../utils/form';
 
-const NewWeekForm = () => {
+const WeekForm = () => {
     const [value, setValue] = useState({});
     const [teams, setTeams] = useState<Team[]>([]);
     const { weekId } = useParams();
@@ -139,4 +139,4 @@ const NewWeekForm = () => {
     );
 }
 
-export default NewWeekForm
+export default WeekForm
