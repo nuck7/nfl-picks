@@ -5,7 +5,7 @@ import SelectField from '../SelectField';
 import { getTeams } from '../../resources/nfl-picks-server';
 import { Team } from '../../types';
 
-const PickForm = () => {
+const PicksForm = () => {
     // Pass the useFormik() hook initial form values and a submit function that will
     // be called when the form is submitted
     const formik = useFormik({
@@ -81,4 +81,4 @@ const PickForm = () => {
     );
 }
 
-export default PickForm
+export default PicksForm

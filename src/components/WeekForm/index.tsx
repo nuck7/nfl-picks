@@ -6,14 +6,17 @@ import { DateInput, Form, TextInput } from 'grommet';
 import { MatchupContainer, MatchupLabel, TeamSelectContainer, StyledFormField, SubmitButton, AtContainer, FormFieldLabel, DateContainer } from './index.styles';
 import SelectField from '../SelectField';
 import CustomFormField from '../CustomFormField';
-import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { submitNewWeekForm, weekDbToForm } from '../../utils/form';
 
 const WeekForm = () => {
     const [value, setValue] = useState({});
     const [teams, setTeams] = useState<Team[]>([]);
-    const { weekId } = useParams();
-    const [formState, setFormState] = useState(emptyWeekFormState)
+    const { pathname } = useLocation();
+    const pathMatch = pathname.match(/\/week\/(\d|5)$/);
+    const weekId = pathMatch ? pathMatch[1] : pathMatch;
+
+    const [formState, setFormState] = useState(emptyWeekFormState);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
 
     useMemo(() => {
@@ -28,14 +31,13 @@ const WeekForm = () => {
         if (weekId) {
             const getWeek = async () => {
                 const response = await getWeekById(parseInt(weekId))
-                // console.log('Week by id', response)
                 const formData = weekDbToForm(response)
                 setFormState(formData)
-                // console.log('Form state', formState)
             }
             getWeek().catch(console.error);
         }
-    }, [])
+    }, [weekId])
+    console.log('Form state', formState)
 
     return (
         <Form
@@ -87,24 +89,25 @@ const WeekForm = () => {
                     />
                 </CustomFormField>
             </DateContainer>
-            {formState.matchups.length ? formState.matchups.map((matchup, matchupNumber) => {
-                // console.log('matchup number', matchupNumber, formState?.matchups[matchupNumber])
+            {formState.matchups.length ? formState.matchups.map((matchup, index) => {
+                console.log('matchup number', index, matchup)
                 return (
-                <MatchupContainer key={`matchup_cont_${matchupNumber}`}>
-                    <MatchupLabel>{`Matchup ${matchupNumber}`}</MatchupLabel>
+                <MatchupContainer key={`matchup_cont_${index}`}>
+                    <MatchupLabel>{`Matchup ${index + 1}`}</MatchupLabel>
                     <TeamSelectContainer>
-                        <StyledFormField name={`matchup_${matchupNumber}_away`} label={"Away Team"}>
+                        <StyledFormField name={`matchup_${index}_away`} label={"Away Team"}>
                             <SelectField
-                                id={`${matchupNumber}_away`}
+                                id={`matchup_${index}_away`}
                                 label="Away Team"
-                                name={`matchup_${matchupNumber}_away`}
+                                name={`matchup_${index}_away`}
                                 options={teams}
-                                value={formState?.matchups[matchupNumber]?.away.ID}
+                                value={matchup?.away}
+                                defaultValue={matchup?.away}
                                 onChange={event => {
                                     let state = formState
-                                    state.matchups[matchupNumber].away = event.value
+                                    state.matchups[index].away = event.value
                                     setFormState(state)
-                                    console.log('formState', formState, matchupNumber, event.value)
+                                    console.log('formState', formState, index, event.value)
                                 }}
                                 labelKey={(option) => (
                                     `${option.City} ${option.Name}`
@@ -113,16 +116,18 @@ const WeekForm = () => {
                             />
                         </StyledFormField>
                         <AtContainer>@</AtContainer>
-                        <StyledFormField name={`matchup_${matchupNumber}_home`} label={"Home Team"}>
+                        <StyledFormField name={`matchup_${index}_home`} label={"Home Team"}>
                             <SelectField
-                                id={`${matchupNumber}_home`}
+                                id={`matchup_${index}_home`}
                                 label="Home Team"
-                                name={`matchup_${matchupNumber}_home`}
+                                name={`matchup_${index}_home`}
                                 options={teams}
-                                value={formState?.matchups[matchupNumber]?.home.ID}
+                                value={matchup?.home}
+                                defaultValue={matchup?.home}
                                 onChange={event => {
                                     let state = formState
-                                    state.matchups[matchupNumber].home = event.value
+                                    console.log('event.value', event.value)
+                                    state.matchups[index].home = event.value
                                     setFormState(state)
                                 }}
                                 labelKey={(option) => (

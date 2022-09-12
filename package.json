@@ -6,7 +6,7 @@
   "author": "Nick Chu <nchu@riotgames.com>",
   "license": "MIT",
   "scripts": {
-    "start": "webpack serve --port 3000",
+    "start": "webpack serve --port 3000 && docker build -t cors . && docker-compose up -d",
     "build": "NODE_ENV=production webpack"
   },
   "devDependencies": {
@@ -48,7 +48,7 @@
     "axios": "0.27.2",
     "formik": "^2.2.9",
     "global": "^4.4.0",
-    "grommet": "^2.23.0",
+    "grommet": "^2.25.3",
     "grommet-icons": "^4.7.0",
     "koa": "^2.13.4",
     "koa-bodyparser": "^4.3.0",

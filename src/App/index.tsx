@@ -13,6 +13,8 @@ import ProfileMenu from "../components/ProfileMenu";
 import AppMenu from "../components/AppMenu";
 import { MainContainer, Theme } from "./index.styles";
 import { color } from "../theme";
+import Standings from "../components/Standings";
+import PicksForm from "../components/PickForm";
 
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
@@ -46,9 +48,8 @@ const App = () => {
                         <Route path='/' element={<Home />} />
                         <Route path='week/add' element={<WeekForm />} />
                         <Route path='week/:weekId' element={<WeekForm />} />
-                        <Route path='picks' element={<WeekForm />} />
-                        <Route path='picks/:picksId' element={<WeekForm />} />
-                        <Route path='standings/:weekId' element={<WeekForm />} /> 
+                        <Route path='picks/:picksId' element={<PicksForm />} />
+                        <Route path='standings/:weekId' element={<Standings />} /> 
                     </Routes>
                 </MainContainer>
                 {showProfileMenu ? (

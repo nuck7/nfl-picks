@@ -6,8 +6,9 @@ interface Props {
     label: string,
     id: string,
     options: Array<any>,
-    value: string | number,
-    onChange: (event: any) => void,
+    defaultValue: string | object | Element | (string | number | object)[] | undefined,
+    value?: string | object | Element | (string | number | object)[] | undefined,
+    onChange?: (event: any) => void,
     labelKey: string | ((...args: any[]) => ReactNode) | undefined,
     valueKey?: string | {
         key: string;
@@ -20,10 +21,11 @@ const SelectField: React.FC<Props> = ({
     label,
     id,
     options,
+    defaultValue,
     value,
     onChange,
     labelKey,
-    valueKey = "ID",
+    valueKey,
     ...props
 }: Props) => {
     return (
@@ -34,6 +36,8 @@ const SelectField: React.FC<Props> = ({
             //     const regexp = new RegExp(searchText, 'i');
             //     setState({ value, options: options.filter(o => o.match(regexp)) });
             // }}
+            value={value}
+            defaultValue={defaultValue}
             onChange={onChange}
             clear={true}
             labelKey={labelKey}
