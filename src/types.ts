@@ -57,7 +57,14 @@ export type DropdownOption = {
     value: number
 }
 
-export type CreateMatchupInput = {
+export type CreateMatchupsInput = {
+    HomeTeamID: number,
+    AwayTeamID: number,
+    WeekID: number
+}
+
+export type MatchupsInput = {
+    ID: number,
     HomeTeamID: number,
     AwayTeamID: number,
     WeekID: number
@@ -75,11 +82,31 @@ export type CreateWeekInput = {
     End: string
 }
 
-type FormTeam = {
-
+export type UpdateWeekInput = {
+    ID: number,
+    Name: string,
+    Start: string,
+    End: string
 }
 
 export type FormMatchup = {
+    id?: number,
+    weekId?: number,
+    home: {
+        ID:   number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID:   number,
+        City: string,
+        Name: string,
+    }
+}
+
+export type FormUpdateMatchup = {
+    id: number,
+    weekId: number,
     home: {
         ID:   number,
         City: string,
@@ -93,10 +120,19 @@ export type FormMatchup = {
 }
 
 export type WeekFormValues = {
+    id?: number,
     name: string,
     start_date: string,
     end_date: string,
     matchups: FormMatchup[]
+}
+
+export type WeekUpdateFormValues = {
+    id: number,
+    name: string,
+    start_date: string,
+    end_date: string,
+    matchups: FormUpdateMatchup[]
 }
 
 export type MatchupTeams = {

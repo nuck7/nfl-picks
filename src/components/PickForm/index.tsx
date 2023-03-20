@@ -1,83 +1,106 @@
-import React, { useEffect, useState } from 'react';
-import { useFormik } from 'formik';
-import { match } from 'assert';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SelectField from '../SelectField';
-import { getTeams } from '../../resources/nfl-picks-server';
+import { getTeams, getWeekById } from '../../resources/nfl-picks-server';
 import { Team } from '../../types';
+import { useLocation } from 'react-router-dom';
+import { Form } from 'grommet';
+import { pickDbToForm } from '../../utils/form';
+import CustomFormField from '../CustomFormField';
+import { SubmitButton } from '../WeekForm/index.styles';
+import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer } from './index.styles';
+import { emptyPickFormState, emptyWeekFormState } from '../../constants';
 
 const PicksForm = () => {
-    // Pass the useFormik() hook initial form values and a submit function that will
-    // be called when the form is submitted
-    const formik = useFormik({
-        initialValues: {
-            matchups: '',
-        },
-        onSubmit: values => {
-            alert(JSON.stringify(values, null, 2));
-        },
-    });
-    const [matchupSelctions, setMatchupSelctions] = useState({})
-    const [teams, setTeams] = useState<Team[]>([])
+    const [value, setValue] = useState({});
+    const [teams, setTeams] = useState<Team[]>([]);
+    const { pathname } = useLocation();
 
-    useEffect(() => {
+    const [formState, setFormState] = useState(emptyPickFormState);
+    const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
+
+    useMemo(() => {
         const fetchTeams = async () => {
             const response = await getTeams()
             setTeams(response)
         }
-
-        console.log('teams', teams)
         fetchTeams().catch(console.error);
     }, [])
-    // const teamsDropdown = React.useCallback(() => {
 
-    //     return (
-    //         {teams.map((team) => (
-
-    //         ))}
-    //     )
-    // }, [])
-
-
-    const matchups = [
-        {
-            "home_team": "Dallas Cowboys",
-            "away_team": "Denver Broncos"
-        },
-        {
-            "home_team": "New England Patriots",
-            "away_team": "Pittsburg Steelers"
-        },
-        {
-            "home_team": "Los Angeles Rams",
-            "away_team": "New York Giants"
-        },
-        {
-            "home_team": "Los Angeles Chargers",
-            "away_team": "San Franciso 49ers"
-        }
-    ]
-
+    // useEffect(() => {
+    //     const getWeek = async () => {
+    //         const response = await getPicks(parseInt(weekId))
+    //         const formData = pickDbToForm(response)
+    //         setFormState(formData)
+    //     }
+    //     getWeek().catch(console.error);
+    // }, [weekId])
 
     return (
-        <form onSubmit={formik.handleSubmit}>
-            {matchups.map((matchup, index) => (
-                <>
-                    <div>
-                        {`${matchup.away_team} @ ${matchup.home_team}`}
-                    </div>
-                    <label htmlFor={`Matchup ${index}`}></label>
-                    {/* <SelectField
-                        id={`matchup${index}`}
-                        name={`matchup${index}`}
-                        onChange={formik.handleChange}
-                        options={[matchup.away_team, matchup.home_team]}
-                        value={''}
-                    /> */}
-                </>
-            ))
-            }
-            <button type="submit">Submit</button>
-        </form>
+        <Form
+            value={value}
+            onChange={onChange}
+            onSubmit={async () => {
+                console.log("Submit", formState)
+                // const submission = weekId ? await submitUpdatePicks(formState as any, parseInt(weekId)) : await submitCreatePicks(formState)
+
+                // alert(`Response: ${JSON.stringify(submission)}`)
+            }}
+            onReset={() => setValue({})}
+        >
+            {formState.picks.length ? formState.picks.map((pick: any, index: any) => {
+                return (
+                    <PickContainer key={`matchup_cont_${index}`}>
+                        <MatchupLabel>
+                            {`${pick.away_team_city} ${pick.away_team_name}`}
+                            <AtContainer>@</AtContainer>
+                            {`${pick.home_team_city} ${pick.home_team_name}`}
+                        </MatchupLabel>
+                        <TeamSelectContainer>
+                            <StyledFormField name={`matchup_${index}_away`} label={"Away Team"}>
+                                <SelectField
+                                    id={`matchup_${index}_away`}
+                                    label="Away Team"
+                                    name={`matchup_${index}_away`}
+                                    options={teams}
+                                    value={pick?.away}
+                                    defaultValue={pick?.away}
+                                    onChange={event => {
+                                        let state = formState
+                                        state.picks[index].away = event.value
+                                        setFormState(state)
+                                    }}
+                                    labelKey={(option) => (
+                                        `${option.City} ${option.Name}`
+                                    )}
+                                    valueKey="ID"
+                                />
+                            </StyledFormField>
+                            <AtContainer>@</AtContainer>
+                            <StyledFormField name={`matchup_${index}_home`} label={"Home Team"}>
+                                <SelectField
+                                    id={`matchup_${index}_home`}
+                                    label="Home Team"
+                                    name={`matchup_${index}_home`}
+                                    options={teams}
+                                    value={pick?.home}
+                                    defaultValue={pick?.home}
+                                    onChange={event => {
+                                        let state = formState
+                                        state.picks[index].home = event.value
+                                        setFormState(state)
+                                    }}
+                                    labelKey={(option) => (
+                                        `${option.City} ${option.Name}`
+                                    )}
+                                    valueKey="ID"
+                                />
+                            </StyledFormField>
+                        </TeamSelectContainer>
+                    </PickContainer>
+                )
+            }) : null}
+            <SubmitButton primary size="large" type="submit"> Submit</SubmitButton>
+        </Form>
     );
 }
 

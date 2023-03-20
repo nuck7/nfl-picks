@@ -295,7 +295,7 @@ export const emptyWeekFormState = {
                 City: '',
                 Name: ''
             }
-        },{
+        }, {
             home: {
                 ID: 0,
                 City: '',
@@ -379,5 +379,200 @@ export const emptyWeekFormState = {
                 Name: ''
             }
         }
+    ]
+}
+
+export const emptyPickFormState = {
+    week_name: '',
+    week_id: 0,
+    start_date: '',
+    end_date: '',
+    picks: [
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
+        {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        }, {
+            winner: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            home: {
+                ID: 0,
+                City: '',
+                Name: ''
+            },
+            away: {
+                ID: 0,
+                City: '',
+                Name: ''
+            }
+        },
     ]
 }

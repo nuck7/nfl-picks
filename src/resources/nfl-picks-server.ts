@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios'
-import { CreateMatchupInput, CreatePickInput, CreateWeekInput, Team, Week, WeekMatchupsAPI } from '../types';
+import { CreateMatchupsInput, CreatePickInput, CreateWeekInput, Team, MatchupsInput, UpdateWeekInput, Week, WeekMatchupsAPI, Matchup, Pick } from '../types';
 
 export const getTeams = async () => {
     const teams: AxiosResponse<Team[]> = await axios({
@@ -21,7 +21,7 @@ export const getWeekById = async (id: number) => {
 }
 
 export const createWeek = async (week: CreateWeekInput) => {
-    const response: AxiosResponse<Team> = await axios({
+    const response: AxiosResponse<Week> = await axios({
         method: 'post',
         url: 'http://localhost:8091/week',
         headers: { "Content-Type": "application/json" },
@@ -34,8 +34,22 @@ export const createWeek = async (week: CreateWeekInput) => {
     return response
 }
 
-export const createMatchups = async (matchups: CreateMatchupInput[]) => {
-    const response: AxiosResponse<Team[]> = await axios({
+export const updateWeek = async (week: UpdateWeekInput) => {
+    const response: AxiosResponse<Week> = await axios({
+        method: 'patch',
+        url: `http://localhost:8091/week/${week.ID}`,
+        headers: { "Content-Type": "application/json" },
+        data: {
+            Name: week.Name,
+            Start: week.Start,
+            End: week.End,
+        }
+    });
+    return response
+}
+
+export const createMatchups = async (matchups: CreateMatchupsInput[]) => {
+    const response: AxiosResponse<Matchup[]> = await axios({
         method: 'post',
         url: 'http://localhost:8091/matchups',
         headers: { "Content-Type": "application/json" },
@@ -43,9 +57,18 @@ export const createMatchups = async (matchups: CreateMatchupInput[]) => {
     });
     return response
 }
+export const updateMatchups = async (matchups: MatchupsInput[]) => {
+    const response: AxiosResponse<Matchup[]> = await axios({
+        method: 'patch',
+        url: 'http://localhost:8091/matchups',
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({matchups})
+    });
+    return response
+}
 
 export const createPick = async (pick: CreatePickInput) => {
-    const response: AxiosResponse<Team[]> = await axios({
+    const response: AxiosResponse<Pick[]> = await axios({
         method: 'post',
         url: 'http://localhost:8091/pick',
         headers: { "Content-Type": "application/json" },

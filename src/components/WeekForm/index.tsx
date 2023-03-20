@@ -7,7 +7,7 @@ import { MatchupContainer, MatchupLabel, TeamSelectContainer, StyledFormField, S
 import SelectField from '../SelectField';
 import CustomFormField from '../CustomFormField';
 import { useLocation } from 'react-router-dom';
-import { submitNewWeekForm, weekDbToForm } from '../../utils/form';
+import { submitCreateWeek, submitUpdateWeek, weekDbToForm } from '../../utils/form';
 
 const WeekForm = () => {
     const [value, setValue] = useState({});
@@ -37,15 +37,16 @@ const WeekForm = () => {
             getWeek().catch(console.error);
         }
     }, [weekId])
-    console.log('Form state', formState)
 
     return (
         <Form
             value={value}
             onChange={onChange}
-            onSubmit={() => {
+            onSubmit={async () => {
                 console.log("Submit", formState)
-                submitNewWeekForm(formState)
+                const submission = weekId ? await submitUpdateWeek(formState as any, parseInt(weekId)) : await submitCreateWeek(formState)
+
+                alert(`Response: ${JSON.stringify(submission)}`)
             }}
             onReset={() => setValue({})}
         >
@@ -90,7 +91,6 @@ const WeekForm = () => {
                 </CustomFormField>
             </DateContainer>
             {formState.matchups.length ? formState.matchups.map((matchup, index) => {
-                console.log('matchup number', index, matchup)
                 return (
                 <MatchupContainer key={`matchup_cont_${index}`}>
                     <MatchupLabel>{`Matchup ${index + 1}`}</MatchupLabel>
@@ -107,7 +107,6 @@ const WeekForm = () => {
                                     let state = formState
                                     state.matchups[index].away = event.value
                                     setFormState(state)
-                                    console.log('formState', formState, index, event.value)
                                 }}
                                 labelKey={(option) => (
                                     `${option.City} ${option.Name}`
@@ -126,7 +125,6 @@ const WeekForm = () => {
                                 defaultValue={matchup?.home}
                                 onChange={event => {
                                     let state = formState
-                                    console.log('event.value', event.value)
                                     state.matchups[index].home = event.value
                                     setFormState(state)
                                 }}
