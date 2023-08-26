@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Timestamp } from 'firebase/firestore';
+=======
+import { Timestamp } from "firebase/firestore"
+>>>>>>> 927b4d7 (Add espn api resource, start ingestion of espn data, add paths and components for said data)
 
 export type MenuOption = {
   link: string;
@@ -17,6 +21,19 @@ export type SeasonCreate = {
   start: Timestamp;
   end: Timestamp;
 };
+
+export type Season = {
+    id: string,
+    name: string,
+    start: Timestamp,
+    end: Timestamp
+}
+
+export type SeasonCreate = {
+    name: string,
+    start: Timestamp,
+    end: Timestamp
+}
 
 export type Team = {
   id: string;
@@ -145,6 +162,7 @@ export type UpdateWeekInput = {
 };
 
 export type FormMatchup = {
+<<<<<<< HEAD
   id?: number;
   weekId?: number;
   home: {
@@ -173,6 +191,36 @@ export type FormUpdateMatchup = {
     Name: string;
   };
 };
+=======
+    id?: number,
+    weekId?: number,
+    home: {
+        ID: number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID: number,
+        City: string,
+        Name: string,
+    }
+}
+
+export type FormUpdateMatchup = {
+    id: number,
+    weekId: number,
+    home: {
+        ID: number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID: number,
+        City: string,
+        Name: string,
+    }
+}
+>>>>>>> 927b4d7 (Add espn api resource, start ingestion of espn data, add paths and components for said data)
 
 export type WeekFormValues = {
   id?: number;
@@ -191,6 +239,7 @@ export type WeekUpdateFormValues = {
 };
 
 export type MatchupTeams = {
+<<<<<<< HEAD
   ID: number;
   HomeTeamID: number;
   HomeTeamCity: string;
@@ -200,6 +249,17 @@ export type MatchupTeams = {
   AwayTeamName: string;
   WeekID: number;
 };
+=======
+    ID: number,
+    HomeTeamID: number,
+    HomeTeamCity: string,
+    HomeTeamName: string,
+    AwayTeamID: number,
+    AwayTeamCity: string,
+    AwayTeamName: string,
+    WeekID: number
+}
+>>>>>>> 927b4d7 (Add espn api resource, start ingestion of espn data, add paths and components for said data)
 
 export type WeekMatchupsAPI = {
   ID: number;
