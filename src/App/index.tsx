@@ -15,6 +15,9 @@ import { MainContainer, Theme } from "./index.styles";
 import { color } from "../theme";
 import Standings from "../components/Standings";
 import PicksForm from "../components/PickForm";
+import Teams from "../components/Teams";
+import Weeks from "../components/Weeks";
+import Seasons from "../components/Seasons";
 
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
@@ -46,7 +49,11 @@ const App = () => {
                 <MainContainer gridArea="main" background={color.white} alignContent="center" align="center">
                     <Routes>
                         <Route path='/' element={<Home />} />
+                        <Route path='teams' element={<Teams />} />
+                        <Route path='weeks' element={<Weeks />} /> 
+                        <Route path='seasons' element={<Seasons />} /> 
                         <Route path='week/add' element={<WeekForm />} />
+                        <Route path='picks' element={<PicksForm />} />
                         <Route path='week/:weekId' element={<WeekForm />} />
                         <Route path='picks/:picksId' element={<PicksForm />} />
                         <Route path='standings/:weekId' element={<Standings />} /> 

@@ -19,13 +19,13 @@ const WeekForm = () => {
     const [formState, setFormState] = useState(emptyWeekFormState);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
 
-    useMemo(() => {
-        const fetchTeams = async () => {
-            const response = await getTeams()
-            setTeams(response)
-        }
-        fetchTeams().catch(console.error);
-    }, [])
+    // useMemo(() => {
+    //     const fetchTeams = async () => {
+    //         const response = await getTeams()
+    //         setTeams(response)
+    //     }
+    //     fetchTeams().catch(console.error);
+    // }, [])
 
     useEffect(() => {
         if (weekId) {

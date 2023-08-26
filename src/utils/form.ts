@@ -6,11 +6,11 @@ export const submitCreateWeek = async (weekFormValues: WeekFormValues) => {
     console.log('week to submit', week)
 
     const createWeekResponse = await createWeek(week)
-    console.log('week id', createWeekResponse.data.ID)
-    const matchups = createMatchupFormToDb(weekFormValues.matchups, createWeekResponse.data.ID)
-    console.log('matchups', matchups)
-    const createMatchupResponse = await createMatchups(matchups)
-    console.log('createMatchupResponse ', createMatchupResponse)
+    console.log('week id', createWeekResponse.data.id)
+    // const matchups = createMatchupFormToDb(weekFormValues.matchups, createWeekResponse.data.id)
+    // console.log('matchups', matchups)
+    // const createMatchupResponse = await createMatchups(matchups)
+    // console.log('createMatchupResponse ', createMatchupResponse)
 }
 
 export const submitUpdateWeek = async (weekFormValues: WeekUpdateFormValues, weekId: number) => {
