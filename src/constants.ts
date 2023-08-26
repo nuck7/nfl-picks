@@ -1,3 +1,5 @@
+export const EspnRegularSeasonAbbreviation = "reg"
+
 export const AppMenuOptions = [
     {
         label: "Home",
