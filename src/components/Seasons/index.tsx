@@ -1,35 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { EspnRef, EspnSeason, EspnSeasons, Season, SeasonCreate } from '../../types';
+import { EspnRef, EspnSeasons, Season } from '../../types';
 import { DataTable, Text } from 'grommet';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '../../resources/firebase.config';
 import { getSeason, getSeasons } from '../../resources/espn';
 import { Timestamp } from 'firebase/firestore';
 
 const Seasons = () => {
     const [seasons, setSeasons] = useState<Season[]>([]);
-    const collectionRef = collection(db, 'seasons')
-
-    useMemo(() => {
-        const fetchSeasons = async () => {
-            const q = query(collectionRef)
-            const querySnapshot = await getDocs(q)
-            const seasons = querySnapshot.docs.map((doc) => {
-                const data = doc.data();
-        console.log(`start ${data.start}`)
-
-                return {
-                    id: doc.id,
-                    name: data.name,
-                    start: data.start,
-                    end: data.end
-                }
-            })
-            // setSeasons(seasons)
-        }
-
-        fetchSeasons()
-    }, [])
 
     useMemo(() => {
         const getSeasonsEspn = async () => {
