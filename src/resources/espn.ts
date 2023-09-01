@@ -1,6 +1,19 @@
-import axios, { AxiosResponse } from 'axios'
-import { CreateMatchupsInput, CreatePickInput, CreateWeekInput, Team, MatchupsInput, UpdateWeekInput, Week, WeekMatchupsAPI, Matchup, EspnSeasons, EspnSeason, EspnEvent } from '../types';
-import { getCurrentYear } from './util';
+import axios, { AxiosResponse } from 'axios';
+import {
+  CreateMatchupsInput,
+  CreatePickInput,
+  CreateWeekInput,
+  Team,
+  MatchupsInput,
+  UpdateWeekInput,
+  Week,
+  WeekMatchupsAPI,
+  Matchup,
+  EspnSeasons,
+  EspnSeason,
+  EspnEvent,
+} from '../types';
+import { getCurrentYear } from '../utils/espn';
 
 const ESPN_PARAMS = {
   lang: 'en',
@@ -43,6 +56,13 @@ export const getCurrentWeekMatchups = async () => {
   const matchups = await Promise.all(matchupQueries);
 
   return matchups;
+};
+
+export const getTeamById = async (teamId: string) => {
+  const year = getCurrentYear();
+  const team = espnFetch(`seasons/${year}/teams/${teamId}`);
+
+  return team;
 };
 
 export const getWeekById = async (id: number) => {
@@ -102,4 +122,3 @@ export const updateMatchups = async (matchups: MatchupsInput[]) => {
   });
   return response;
 };
-
