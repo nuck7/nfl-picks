@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SelectField from '../SelectField';
-import { Matchup, MatchupV2, Picks, Team, Week } from '../../types';
+import { EspnCompetitor, EspnMatchup, Matchup, MatchupV2, Picks, Team, Week } from '../../types';
 import { useLocation } from 'react-router-dom';
 import { Form } from 'grommet';
 import { pickDbToForm } from '../../utils/form';
 import CustomFormField from '../CustomFormField';
 import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton } from './index.styles';
-import { emptyPickFormState, emptyWeekFormState } from '../../constants';
+import { emptyPickFormState, emptyPickFormStateV2, emptyWeekFormState } from '../../constants';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../resources/firebase.config';
 import { getDocuments } from '../../resources/firebase';
+import { getCurrentWeekMatchups } from '../../resources/espn';
 
 const PicksForm = () => {
     const [value, setValue] = useState({});
@@ -17,7 +18,7 @@ const PicksForm = () => {
     const [weekId, setWeekId] = useState<string>('');
     const [weeks, setWeeks] = useState<Week[]>([]);
     const [week, setWeek] = useState<Week>();
-    const [matchups, setMatchups] = useState<Matchup[]>([]);
+    const [matchups, setMatchups] = useState<EspnMatchup[]>([]);
     const [picks, setPicks] = useState<any>();
 
     const { pathname } = useLocation();
@@ -32,23 +33,21 @@ const PicksForm = () => {
     const matchupCollectionRef = collection(db, 'matchups')
     const pickCollectionRef = collection(db, 'picks')
 
-    const [formState, setFormState] = useState(emptyPickFormState);
+    const [formState, setFormState] = useState(emptyPickFormStateV2);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
 
-    useEffect(() => {
-        // const getWeek = async () => {
-        //     const response = await getWeekById(parseInt(weekId))
-        //     const formData = weekDbToForm(response)
-        //     setFormState(formData)
-        // }
-        // getWeek().catch(console.error);
-    }, [weekId])
+    useMemo(() => {
+        const fetchMatchups = async () => {
+            const matchups = await getCurrentWeekMatchups()
+            console.log(`matchups ${JSON.stringify(matchups)}`)
+            setMatchups(matchups)
+        }
+        fetchMatchups()
+    }, [])
 
     useMemo(() => {
         const fetchPicks = async () => {
             const docs = await getDocuments(pickCollectionRef)
-            console.log(`docs ${JSON.stringify(docs)}`)
-
             const doc = docs[0]
             const data = doc.data();
             const picks = {
@@ -58,20 +57,11 @@ const PicksForm = () => {
                 weekId: data.weekId,
                 matchups: data.matchups,
             }
-            console.log(`picks ${JSON.stringify(picks)}`)
+            // console.log(`picks ${JSON.stringify(picks)}`)
             setPicks(picks)
         }
         fetchPicks()
     }, [])
-
-    // useEffect(() => {
-    // const getWeek = async () => {
-    //     const response = await getWeekById(parseInt(weekId))
-    //     const formData = weekDbToForm(response)
-    //     setFormState(formData)
-    // }
-    // getWeek().catch(console.error);
-    // }, [weekId])
 
     // useMemo(() => {
     //     const fetchTeams = async () => {
@@ -164,92 +154,48 @@ const PicksForm = () => {
             }}
             onReset={() => setValue({})}
         >
-            {matchups.length ? weeks.map((matchup: any, index: any) => {
+            {matchups ? matchups.map((matchup, index: any) => {
+                const teamNames = matchup.name.split(' at ')
+                const options = matchup.competitions[0].competitors.map((competitor: EspnCompetitor) => {
+                    return {
+                        name: competitor.homeAway == 'away' ? teamNames[0] : teamNames[1],
+                        id: competitor.id
+                    }
+                })
+
                 return (
                     <PickContainer key={`matchup_cont_${index}`}>
                         <MatchupLabel>
-                            {`${matchup.away_team_city} ${matchup.away_team_name}`}
-                            <AtContainer>@</AtContainer>
-                            {`${matchup.home_team_city} ${matchup.home_team_name}`}
+                            {`${matchup?.name}`}
                         </MatchupLabel>
                         <TeamSelectContainer>
-                            <StyledFormField name={`matchup_${index}_away`} label={"Away Team"}>
+                            <StyledFormField name={`matchup_${index}_away`} label={"Winning Team"}>
                                 <SelectField
-                                    id={`matchup_${index}_away`}
-                                    label="Away Team"
-                                    name={`matchup_${index}_away`}
-                                    options={teams}
-                                    value={matchup?.away}
-                                    defaultValue={matchup?.away}
+                                    id={`matchup_${index}`}
+                                    label="Picked Team"
+                                    name={`matchup_${index}`}
+                                    options={options}
+                                    value={formState?.picks[index]?.pickedTeam}
+                                    defaultValue={formState?.picks[index]?.pickedTeam}
                                     onChange={event => {
                                         let state = formState
-                                        state.picks[index].away = event.value
+                                        state.picks[index].pickedTeam.id = event.value
+                                        state.picks[index].pickedTeam.name = event.label
+                                        console.log(`event value ${JSON.stringify(event.value)}`)
+                                        console.log(`state ${JSON.stringify(state)}`)
                                         setFormState(state)
                                     }}
                                     labelKey={(option) => (
-                                        `${option.City} ${option.Name}`
+                                        `${option.name}`
                                     )}
-                                    valueKey="ID"
-                                />
-                            </StyledFormField>
-                            <AtContainer>@</AtContainer>
-                            <StyledFormField name={`matchup_${index}_home`} label={"Home Team"}>
-                                <SelectField
-                                    id={`matchup_${index}_home`}
-                                    label="Home Team"
-                                    name={`matchup_${index}_home`}
-                                    options={teams}
-                                    value={matchup?.home}
-                                    defaultValue={matchup?.home}
-                                    onChange={event => {
-                                        let state = formState
-                                        state.picks[index].home = event.value
-                                        setFormState(state)
-                                    }}
-                                    labelKey={(option) => (
-                                        `${option.City} ${option.Name}`
-                                    )}
-                                    valueKey="ID"
+                                    valueKey="id"
                                 />
                             </StyledFormField>
                         </TeamSelectContainer>
                     </PickContainer>
                 )
             }) : null}
-
-            {/* {formState.picks.length ? formState.picks.map((pick: any, index: any) => {
-                return (
-                    <PickContainer key={`matchup_cont_${index}`}>
-                        <MatchupLabel>
-                            {`${matchup.awayTeam}`}
-                            <AtContainer>@</AtContainer>
-                            {`${matchup.homeTeam}`}
-                        </MatchupLabel>
-                        <TeamSelectContainer>
-                            <StyledFormField name={`matchup_${index}_away`} label={"Winning Team"}>
-                                <SelectField
-                                    id={`matchup_${index}_away`}
-                                    label="Away Team"
-                                    name={`matchup_${index}_away`}
-                                    options={teams}
-                                    value={matchup?.away}
-                                    defaultValue={matchup?.away}
-                                    onChange={event => {
-                                        let state = formState
-                                        state.picks[index].away = event.value
-                                        setFormState(state)
-                                    }}
-                                    labelKey={(option) => (
-                                        `${option.City} ${option.Name}`
-                                    )}
-                                    valueKey="ID"
-                                />
-                            </StyledFormField>
-                        </TeamSelectContainer>
-                    </PickContainer>
-                )
-            }) : null} */}
-            <SubmitButton primary size="large" type="submit"> Submit</SubmitButton>
+            <SubmitButton primary size="large" type="submit">Submit</SubmitButton>
         </Form>
     );
 }

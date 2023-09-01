@@ -50,10 +50,10 @@ export const getCurrentWeekId = async () => {
   return season.week.number;
 };
 
-export const getCurrentWeekMatchups = async () => {
+export const getCurrentWeekMatchups = async (): Promise<EspnMatchup[]> => {
   const events = await espnFetch<EspnEvent>('events');
-  const matchupQueries = events.items.map((event) => espnFetchUrl(event.$ref));
-  const matchups = await Promise.all(matchupQueries);
+  const matchupQueries = events.items.map((event): Promise<EspnMatchup> => espnFetchUrl(event.$ref));
+  const matchups: EspnMatchup[] = await Promise.all(matchupQueries);
 
   return matchups;
 };
