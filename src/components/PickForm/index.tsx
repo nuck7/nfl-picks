@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SelectField from '../SelectField';
-import { getTeams, getWeekById } from '../../resources/nfl-picks-server';
-import { Matchup, Team, Week } from '../../types';
+import { Matchup, MatchupV2, Picks, Team, Week } from '../../types';
 import { useLocation } from 'react-router-dom';
 import { Form } from 'grommet';
 import { pickDbToForm } from '../../utils/form';
 import CustomFormField from '../CustomFormField';
-import { SubmitButton } from '../WeekForm/index.styles';
-import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer } from './index.styles';
+import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton } from './index.styles';
 import { emptyPickFormState, emptyWeekFormState } from '../../constants';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../resources/firebase.config';
+import { getDocuments } from '../../resources/firebase';
 
 const PicksForm = () => {
     const [value, setValue] = useState({});
@@ -19,6 +18,7 @@ const PicksForm = () => {
     const [weeks, setWeeks] = useState<Week[]>([]);
     const [week, setWeek] = useState<Week>();
     const [matchups, setMatchups] = useState<Matchup[]>([]);
+    const [picks, setPicks] = useState<any>();
 
     const { pathname } = useLocation();
     const pathMatch = pathname.match(/\/week\/(\d|5)$/);
@@ -30,6 +30,7 @@ const PicksForm = () => {
     const teamCollectionRef = collection(db, 'teams')
     const weekCollectionRef = collection(db, 'weeks')
     const matchupCollectionRef = collection(db, 'matchups')
+    const pickCollectionRef = collection(db, 'picks')
 
     const [formState, setFormState] = useState(emptyPickFormState);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
@@ -44,44 +45,52 @@ const PicksForm = () => {
     }, [weekId])
 
     useMemo(() => {
-        const fetchTeams = async () => {
-            const q = query(teamCollectionRef)
-            const querySnapshot = await getDocs(q)
-            const teams = querySnapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    name: data.name,
-                    city: data.city,
-                }
-            })
-            console.log(`Teams ${teams}`)
-            setTeams(teams)
-        }
+        const fetchPicks = async () => {
+            const docs = await getDocuments(pickCollectionRef)
+            console.log(`docs ${JSON.stringify(docs)}`)
 
-        fetchTeams()
+            const doc = docs[0]
+            const data = doc.data();
+            const picks = {
+                id: doc.id,
+                userID: data.userId,
+                pickedTeam: data.pickedTeam,
+                weekId: data.weekId,
+                matchups: data.matchups,
+            }
+            console.log(`picks ${JSON.stringify(picks)}`)
+            setPicks(picks)
+        }
+        fetchPicks()
     }, [])
 
-    useEffect(() => {
-        const fetchWeeks = async () => {
-            const q = query(weekCollectionRef)
-            const querySnapshot = await getDocs(q)
-            const weeks = querySnapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    name: data.name,
-                    start: data.start,
-                    end: data.end,
-                }
-            })
-            console.log(`Weeks ${weeks}`)
+    // useEffect(() => {
+    // const getWeek = async () => {
+    //     const response = await getWeekById(parseInt(weekId))
+    //     const formData = weekDbToForm(response)
+    //     setFormState(formData)
+    // }
+    // getWeek().catch(console.error);
+    // }, [weekId])
 
-            setWeeks(weeks)
-        }
+    // useMemo(() => {
+    //     const fetchTeams = async () => {
+    //         const q = query(teamCollectionRef)
+    //         const querySnapshot = await getDocs(q)
+    //         const teams = querySnapshot.docs.map((doc) => {
+    //             const data = doc.data();
+    //             return {
+    //                 id: doc.id,
+    //                 name: data.name,
+    //                 city: data.city,
+    //             }
+    //         })
+    //         console.log(`Teams ${teams}`)
+    //         setTeams(teams)
+    //     }
 
-        fetchWeeks()
-    }, [])
+    //     fetchTeams()
+    // }, [])
 
     useEffect(() => {
         const fetchCurrentWeek = async () => {
@@ -101,31 +110,47 @@ const PicksForm = () => {
         fetchCurrentWeek()
     }, [])
 
-    useEffect(() => {
-        const fetchMatchups = async () => {
-            const q = query(matchupCollectionRef)
-            const querySnapshot = await getDocs(q)
-            const matchups = querySnapshot.docs.map((doc) => {
-                const data = doc.data();
-            console.log(`Matchup ${JSON.stringify({
-                id: doc.id,
-                weekID: data.weekID,
-                homeTeamID: data.homeTeamID,
-                awayTeamID: data.awayTeamID,
-            })}`)
-                return {
-                    id: doc.id,
-                    weekID: data.weekID,
-                    homeTeamID: data.homeTeamID,
-                    awayTeamID: data.awayTeamID,
-                }
-            })
-            // console.log(`Matchups ${JSON.stringify(matchups)}`)
+    // useEffect(() => {
+    //     const fetchMatchups = async () => {
+    //         // const q = query(matchupCollectionRef)
+    //         // const querySnapshot = await getDocs(q)
+    //         const docs = await getDocuments(matchupCollectionRef)
+    //         console.log(`docs ${JSON.stringify(docs)}`)
 
-            setMatchups(matchups)
-        }
-        fetchMatchups()
-    }, [week])
+    //         const matchups = docs.map((doc) => {
+    //             // let data = doc.data();                
+    //             let matchup = doc.data();
+    //             // matchup.id = matchup._document.key.path.segments;
+    //             // console.log(`Matchups length ${JSON.stringify(_document._key)}`)
+
+    //             // const q = query(matchupCollectionRef)
+    //             // const querySnapshot = await getDocs(q)
+    //             // const matchups = querySnapshot.docs.map((doc) => {
+    //             //     matchup.pickRef.get()
+    //             //         .then((res: { data: () => any; }) => {
+    //             //             matchup.weekID = res.data()
+    //             //         })
+    //             //         .catch((err: any) => console.error(err));
+    //             // }
+    //             console.log(`Matchup ${JSON.stringify({
+    //                 id: doc.id,
+    //                 weekID: matchup.weekID._key.path.segments[6],
+    //                 homeTeamID: matchup.homeTeamID._key.path.segments[6],
+    //                 awayTeamID: matchup.awayTeamID._key.path.segments[6],
+    //             })}`)
+    //             return {
+    //                 id: doc.id,
+    //                 weekID: matchup.weekID._key.path.segments[6],
+    //                 homeTeamID: matchup.homeTeamID._key.path.segments[6],
+    //                 awayTeamID: matchup.awayTeamID._key.path.segments[6],
+    //             }
+    //         })
+    //         console.log(`Matchups ${JSON.stringify(matchups)}`)
+
+    //         setMatchups(matchups)
+    //     }
+    //     fetchMatchups()
+    // }, [week])
 
     return (
         <Form
@@ -196,42 +221,22 @@ const PicksForm = () => {
                 return (
                     <PickContainer key={`matchup_cont_${index}`}>
                         <MatchupLabel>
-                            {`${pick.away_team_city} ${pick.away_team_name}`}
+                            {`${matchup.awayTeam}`}
                             <AtContainer>@</AtContainer>
-                            {`${pick.home_team_city} ${pick.home_team_name}`}
+                            {`${matchup.homeTeam}`}
                         </MatchupLabel>
                         <TeamSelectContainer>
-                            <StyledFormField name={`matchup_${index}_away`} label={"Away Team"}>
+                            <StyledFormField name={`matchup_${index}_away`} label={"Winning Team"}>
                                 <SelectField
                                     id={`matchup_${index}_away`}
                                     label="Away Team"
                                     name={`matchup_${index}_away`}
                                     options={teams}
-                                    value={pick?.away}
-                                    defaultValue={pick?.away}
+                                    value={matchup?.away}
+                                    defaultValue={matchup?.away}
                                     onChange={event => {
                                         let state = formState
                                         state.picks[index].away = event.value
-                                        setFormState(state)
-                                    }}
-                                    labelKey={(option) => (
-                                        `${option.City} ${option.Name}`
-                                    )}
-                                    valueKey="ID"
-                                />
-                            </StyledFormField>
-                            <AtContainer>@</AtContainer>
-                            <StyledFormField name={`matchup_${index}_home`} label={"Home Team"}>
-                                <SelectField
-                                    id={`matchup_${index}_home`}
-                                    label="Home Team"
-                                    name={`matchup_${index}_home`}
-                                    options={teams}
-                                    value={pick?.home}
-                                    defaultValue={pick?.home}
-                                    onChange={event => {
-                                        let state = formState
-                                        state.picks[index].home = event.value
                                         setFormState(state)
                                     }}
                                     labelKey={(option) => (

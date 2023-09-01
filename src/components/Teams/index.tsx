@@ -3,6 +3,7 @@ import { Team } from '../../types';
 import { DataTable, Text } from 'grommet';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../resources/firebase.config';
+import { getCurrentWeekMatchups } from '../../resources/espn';
 
 const Teams = () => {
     const [teams, setTeams] = useState<Team[]>([]);
