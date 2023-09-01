@@ -6,8 +6,6 @@ import { useAuth } from '../../resources/auth';
 export const ProtectedRoute = () => {
   const user = useAuth();
 
-  console.log('/////user autheticated', user);
-
   return typeof user === 'undefined' ? (
     <></>
   ) : user ? (
