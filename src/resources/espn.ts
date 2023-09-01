@@ -9,7 +9,6 @@ import {
   Week,
   WeekMatchupsAPI,
   Matchup,
-  Pick,
   EspnSeasons,
   EspnSeason,
   EspnEvent,
@@ -120,20 +119,6 @@ export const updateMatchups = async (matchups: MatchupsInput[]) => {
     url: 'http://localhost:8091/matchups',
     headers: { 'Content-Type': 'application/json' },
     data: JSON.stringify({ matchups }),
-  });
-  return response;
-};
-
-export const createPick = async (pick: CreatePickInput) => {
-  const response: AxiosResponse<Pick[]> = await axios({
-    method: 'post',
-    url: 'http://localhost:8091/pick',
-    headers: { 'Content-Type': 'application/json' },
-    data: {
-      UserID: pick.UserID,
-      MatchupID: pick.MatchupID,
-      WinnerID: pick.WinnerID,
-    },
   });
   return response;
 };

@@ -4,7 +4,6 @@ import {
     Routes,
     Route
 } from "react-router-dom";
-import WeekForm from "../components/WeekForm";
 import Home from "../components/Home";
 import NavBar from "../components/NavBar";
 import Login from "../components/Login";
@@ -66,9 +65,7 @@ const App = () => {
                             <Route path='teams' element={<Teams />} />
                             <Route path='weeks' element={<Weeks />} />
                             <Route path='seasons' element={<Seasons />} />
-                            <Route path='week/add' element={<WeekForm />} />
                             <Route path='picks' element={<PicksForm />} />
-                            <Route path='week/:weekId' element={<WeekForm />} />
                             <Route path='picks/:picksId' element={<PicksForm />} />
                             <Route path='standings/:weekId' element={<Standings />} />
                         </Route>
