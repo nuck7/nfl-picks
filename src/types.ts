@@ -37,12 +37,20 @@ export type Matchup = {
   weekID: number;
 };
 
-export type Pick = {
-  id: string;
-  userID: string;
-  matchupID: string;
-  winnerID: string;
-};
+export type MatchupV2 = {
+    id: string,
+    homeTeamId: number,
+    awayTeamId: number,
+    startTimestamp: number,
+}
+
+export type Picks = {
+    id: string,
+    userID: string,
+    pickedTeam: string,
+    weekId: string,
+    matchups: MatchupV2[]
+}
 
 export type Week = {
   id: string;
@@ -145,34 +153,34 @@ export type UpdateWeekInput = {
 };
 
 export type FormMatchup = {
-  id?: number;
-  weekId?: number;
-  home: {
-    ID: number;
-    City: string;
-    Name: string;
-  };
-  away: {
-    ID: number;
-    City: string;
-    Name: string;
-  };
-};
+    id?: number,
+    weekId?: number,
+    home: {
+        ID: number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID: number,
+        City: string,
+        Name: string,
+    }
+}
 
 export type FormUpdateMatchup = {
-  id: number;
-  weekId: number;
-  home: {
-    ID: number;
-    City: string;
-    Name: string;
-  };
-  away: {
-    ID: number;
-    City: string;
-    Name: string;
-  };
-};
+    id: number,
+    weekId: number,
+    home: {
+        ID: number,
+        City: string,
+        Name: string,
+    },
+    away: {
+        ID: number,
+        City: string,
+        Name: string,
+    }
+}
 
 export type WeekFormValues = {
   id?: number;
@@ -191,15 +199,15 @@ export type WeekUpdateFormValues = {
 };
 
 export type MatchupTeams = {
-  ID: number;
-  HomeTeamID: number;
-  HomeTeamCity: string;
-  HomeTeamName: string;
-  AwayTeamID: number;
-  AwayTeamCity: string;
-  AwayTeamName: string;
-  WeekID: number;
-};
+    ID: number,
+    HomeTeamID: number,
+    HomeTeamCity: string,
+    HomeTeamName: string,
+    AwayTeamID: number,
+    AwayTeamCity: string,
+    AwayTeamName: string,
+    WeekID: number
+}
 
 export type WeekMatchupsAPI = {
   ID: number;

@@ -1,20 +1,5 @@
-import axios, { AxiosResponse } from 'axios';
-import {
-  CreateMatchupsInput,
-  CreatePickInput,
-  CreateWeekInput,
-  Team,
-  MatchupsInput,
-  UpdateWeekInput,
-  Week,
-  WeekMatchupsAPI,
-  Matchup,
-  Pick,
-  EspnSeasons,
-  EspnSeason,
-  EspnEvent,
-} from '../types';
-import { getCurrentYear } from './util';
+import axios, { AxiosResponse } from 'axios'
+import { CreateMatchupsInput, CreatePickInput, CreateWeekInput, Team, MatchupsInput, UpdateWeekInput, Week, WeekMatchupsAPI, Matchup, EspnSeasons, EspnSeason, EspnEvent } from '../types';
 
 const ESPN_PARAMS = {
   lang: 'en',
@@ -117,16 +102,3 @@ export const updateMatchups = async (matchups: MatchupsInput[]) => {
   return response;
 };
 
-export const createPick = async (pick: CreatePickInput) => {
-  const response: AxiosResponse<Pick[]> = await axios({
-    method: 'post',
-    url: 'http://localhost:8091/pick',
-    headers: { 'Content-Type': 'application/json' },
-    data: {
-      UserID: pick.UserID,
-      MatchupID: pick.MatchupID,
-      WinnerID: pick.WinnerID,
-    },
-  });
-  return response;
-};
