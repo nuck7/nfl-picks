@@ -1,28 +1,4 @@
-import { createMatchups, createWeek, updateWeek, updateMatchups } from "../resources/nfl-picks-server"
 import { CreateWeekInput, WeekFormValues, FormMatchup, WeekMatchupsAPI, MatchupsInput, CreateMatchupsInput, FormUpdateMatchup, WeekUpdateFormValues } from "../types"
-
-export const submitCreateWeek = async (weekFormValues: WeekFormValues) => {
-    const week = weekFormToDb(weekFormValues)
-    console.log('week to submit', week)
-
-    const createWeekResponse = await createWeek(week)
-    console.log('week id', createWeekResponse.data.id)
-    // const matchups = createMatchupFormToDb(weekFormValues.matchups, createWeekResponse.data.id)
-    // console.log('matchups', matchups)
-    // const createMatchupResponse = await createMatchups(matchups)
-    // console.log('createMatchupResponse ', createMatchupResponse)
-}
-
-export const submitUpdateWeek = async (weekFormValues: WeekUpdateFormValues, weekId: number) => {
-    const week = {
-        ID: weekId,
-        ...weekFormToDb(weekFormValues)
-    }
-    const updateWeekResponse = await updateWeek(week)
-    const matchups = updateMatchupFormToDb(weekFormValues.matchups)
-    const updateMatchupsResponse = await updateMatchups(matchups)
-    return { Week: updateWeekResponse, Matchups: updateMatchupsResponse} 
-}
 
 export const weekFormToDb = (weekFormValues: WeekFormValues): CreateWeekInput => {
     let weekInput = {

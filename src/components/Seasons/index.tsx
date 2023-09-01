@@ -2,8 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { DataTable, Text } from 'grommet';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../resources/firebase.config';
-import { EspnRef, EspnSeasons, Season } from '../../types';
-import { getSeason, getSeasons } from '../../resources/espn';
+import { EspnRef, EspnSeason, EspnSeasons, Season } from '../../types';
+import { espnFetch, espnFetchUrl, getSeason, getSeasons } from '../../resources/espn';
 import { Timestamp } from 'firebase/firestore';
 
 const Seasons = () => {
@@ -23,7 +23,7 @@ const Seasons = () => {
     }
 
     const transformSeason = async (seasonRef: EspnRef): Promise<any>=> {
-        const season = await getSeason(seasonRef.$ref)
+        const season = await espnFetchUrl<EspnSeason>(seasonRef.$ref)
         if (season != null) {
             return {
                 id: season.year.toString(),

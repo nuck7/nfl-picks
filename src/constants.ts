@@ -7,11 +7,19 @@ export const AppMenuOptions = [
     },
     {
         label: "Submit Picks",
-        link: "submit-picks"
+        link: "picks"
     },
     {
-        label: "Start New Week",
-        link: "new-week-form"
+        label: "Seasons",
+        link: "seasons"
+    },
+    {
+        label: "Teams",
+        link: "teams"
+    },
+    {
+        label: "Standings",
+        link: "standings"
     }
 ]
 
@@ -576,5 +584,208 @@ export const emptyPickFormState = {
                 Name: ''
             }
         },
+    ]
+}
+
+export const emptyPickFormStateV2 = {
+    week_id: 0,
+    picks: [
+        {
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },
+        {
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
+        }
     ]
 }
