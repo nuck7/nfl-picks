@@ -14,7 +14,7 @@ import {
   EspnSeason,
   EspnEvent,
 } from '../types';
-import { getCurrentYear } from './util';
+import { getCurrentYear } from '../utils/espn';
 
 const ESPN_PARAMS = {
   lang: 'en',
@@ -57,6 +57,13 @@ export const getCurrentWeekMatchups = async () => {
   const matchups = await Promise.all(matchupQueries);
 
   return matchups;
+};
+
+export const getTeamById = async (teamId: string) => {
+  const year = getCurrentYear();
+  const team = espnFetch(`seasons/${year}/teams/${teamId}`);
+
+  return team;
 };
 
 export const getWeekById = async (id: number) => {
