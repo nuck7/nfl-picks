@@ -19,9 +19,9 @@ export type SeasonCreate = {
 };
 
 export type Team = {
-  id: string;
+  id: number | string;
   name: string;
-  city: string;
+  city?: string;
 };
 
 export type User = {
@@ -42,15 +42,15 @@ export type MatchupV2 = {
   homeTeamId: number;
   awayTeamId: number;
   startTimestamp: number;
-}
+};
 
 export type Picks = {
   id: string;
   userID: string;
   pickedTeam: string;
   weekId: string;
-  matchups: MatchupV2[]
-}
+  matchups: MatchupV2[];
+};
 
 export type Week = {
   id: string;
@@ -84,8 +84,9 @@ export type EspnSeason = {
   types: EspnSeasonTypes;
   type: {
     week: {
-    number: number;
-  } }
+      number: number;
+    };
+  };
 };
 
 export type EspnSeasonTypes = {
@@ -121,24 +122,24 @@ export type EspnMatchup = {
   name: string;
   shortName: string;
   week: EspnRef;
-  competitions: EspnCompetition[]
+  competitions: EspnCompetition[];
 };
 
 export type EspnCompetition = {
   $ref: string;
   id: string;
   date: string;
-  competitors: EspnCompetitor[]
-}
+  competitors: EspnCompetitor[];
+};
 
 export type EspnCompetitor = {
   $ref: string;
-  id : string; 
+  id: string;
   type: string;
   order: number;
   homeAway: string;
   team: EspnRef;
-}
+};
 
 export type DropdownOption = {
   label: string;
@@ -189,8 +190,8 @@ export type FormMatchup = {
     ID: number;
     City: string;
     Name: string;
-  }
-}
+  };
+};
 
 export type FormUpdateMatchup = {
   id: number;
@@ -204,8 +205,8 @@ export type FormUpdateMatchup = {
     ID: number;
     City: string;
     Name: string;
-  }
-}
+  };
+};
 
 export type WeekFormValues = {
   id?: number;
@@ -231,8 +232,8 @@ export type MatchupTeams = {
   AwayTeamID: number;
   AwayTeamCity: string;
   AwayTeamName: string;
-  WeekID: number
-}
+  WeekID: number;
+};
 
 export type WeekMatchupsAPI = {
   ID: number;
@@ -240,4 +241,17 @@ export type WeekMatchupsAPI = {
   Start: string;
   End: string;
   Matchups: MatchupTeams[];
+};
+
+export type Pick = {
+  awayTeam: Team;
+  homeTeam: Team;
+  pickedTeam: Team;
+};
+
+export type PicksForm = {
+  key?: string;
+  picks: Pick[];
+  user_id?: string;
+  week_id: number;
 };

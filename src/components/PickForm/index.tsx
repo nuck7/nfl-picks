@@ -8,7 +8,7 @@ import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectCo
 import { emptyPickFormStateV2 } from '../../constants';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../resources/firebase.config';
-import { getDocuments } from '../../resources/firebase';
+import { getDocuments, getPicks, getPicksForCurrentUser, savePicks } from '../../resources/firebase';
 import { getCurrentWeekId, getCurrentWeekMatchups } from '../../resources/espn';
 
 const PicksForm = () => {
@@ -40,17 +40,8 @@ const PicksForm = () => {
 
     useMemo(() => {
         const fetchPicks = async () => {
-            const docs = await getDocuments(pickCollectionRef)
-            const doc = docs[0]
-            const data = doc.data();
-            const picks = {
-                id: doc.id,
-                userID: data.userId,
-                pickedTeam: data.pickedTeam,
-                weekId: data.weekId,
-                matchups: data.matchups,
-            }
-            setPicks(picks)
+            const picks = await getPicksForCurrentUser();
+            setPicks(picks);
         }
         fetchPicks()
     }, [])
@@ -78,6 +69,7 @@ const PicksForm = () => {
             value={value}
             onChange={onChange}
             onSubmit={async () => {
+                await savePicks(formState);
                 console.log("Submit", JSON.stringify(formState))
                 // const submission = weekId ? await submitUpdatePicks(formState as any, parseInt(weekId)) : await submitCreatePicks(formState)
                 // alert(`Response: ${JSON.stringify(submission)}`)
@@ -100,9 +92,10 @@ const PicksForm = () => {
                                     label="Picked Team"
                                     name={`matchup ${index+1}`}
                                     options={options}
-                                    value={formState?.picks[index]?.pickedTeam}
-                                    defaultValue={formState?.picks[index]?.pickedTeam}
+                                    value={picks?.picks[index]?.pickedTeam || formState?.picks[index]?.pickedTeam}
+                                    defaultValue={picks?.picks[index]?.pickedTeam || formState?.picks[index]?.pickedTeam}
                                     onChange={event => {
+                                        debugger;
                                         let state = formState
                                         for (const team of matchup.competitions[0].competitors) {
                                             if (team.homeAway == 'home') {
