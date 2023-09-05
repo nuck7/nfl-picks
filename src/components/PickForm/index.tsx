@@ -79,6 +79,7 @@ const PicksForm = () => {
                                     value={picks?.picks[index]?.pickedTeam || formState?.picks[index]?.pickedTeam}
                                     defaultValue={picks?.picks[index]?.pickedTeam || formState?.picks[index]?.pickedTeam}
                                     onChange={event => {
+                                        debugger;
                                         let state = formState
                                         for (const team of matchup.competitions[0].competitors) {
                                             if (team.homeAway == 'home') {
