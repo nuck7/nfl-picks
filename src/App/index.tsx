@@ -56,7 +56,7 @@ const App = () => {
                             <Route path='weeks' element={<Weeks />} />
                             <Route path='seasons' element={<Seasons />} />
                             <Route path='picks' element={<PicksForm />} />
-                            <Route path='standings" element={<Standings />} />
+                            <Route path='standings' element={<Standings />} />
                         </Route>
                     </Routes>
                 </MainContainer>

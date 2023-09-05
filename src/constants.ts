@@ -786,6 +786,19 @@ export const emptyPickFormStateV2 = {
                 id: 0,
                 name: ""
             }
+        },{
+            pickedTeam: {
+                id: 0,
+                name: ""
+            },
+            homeTeam: {
+                id: 0,
+                name: ""
+            },
+            awayTeam: {
+                id: 0,
+                name: ""
+            }
         }
     ]
 }

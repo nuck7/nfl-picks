@@ -82,9 +82,10 @@ export type EspnSeason = {
   endDate: string;
   displayName: string;
   types: EspnSeasonTypes;
-  week: {
+  type: {
+    week: {
     number: number;
-  };
+  } }
 };
 
 export type EspnSeasonTypes = {

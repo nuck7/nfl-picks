@@ -12,6 +12,7 @@ import {
   EspnSeasons,
   EspnSeason,
   EspnEvent,
+  EspnMatchup,
 } from '../types';
 import { getCurrentYear } from '../utils/espn';
 
@@ -47,7 +48,7 @@ export const getCurrentSeason = async () => {
 
 export const getCurrentWeekId = async () => {
   const season = await getCurrentSeason();
-  return season.week.number;
+  return season.type.week.number;
 };
 
 export const getCurrentWeekMatchups = async (): Promise<EspnMatchup[]> => {
