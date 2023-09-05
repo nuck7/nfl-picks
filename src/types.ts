@@ -255,3 +255,22 @@ export type PicksForm = {
   user_id?: string;
   week_id: number;
 };
+
+export type PickRow = {
+  matchup0: string;
+  matchup1: string;
+  matchup2: string;
+  matchup3: string;
+  matchup4: string;
+  matchup5: string;
+  matchup6: string;
+  matchup7: string;
+  matchup8: string;
+  matchup9: string;
+  matchup10: string;
+  matchup11: string;
+  matchup12: string;
+  matchup13: string;
+  matchup14: string;
+  matchup15: string;
+};
