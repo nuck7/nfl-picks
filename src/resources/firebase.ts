@@ -1,7 +1,6 @@
 import {
   CollectionReference,
   DocumentData,
-  Query,
   QueryCompositeFilterConstraint,
   addDoc,
   collection,
@@ -11,10 +10,11 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore';
-import { db } from './firebase.config';
-import { getCurrentUser } from './auth';
+
 import { PicksForm } from '../types';
+import { getCurrentUser } from './auth';
 import { getCurrentWeekId } from './espn';
+import { db } from './firebase.config';
 
 export const getDocuments = async (
   collectionRef: CollectionReference<DocumentData, DocumentData>,
@@ -42,7 +42,9 @@ export const getPicks = async (): Promise<PicksForm[]> => {
   return picks;
 };
 
-export const getPicksForCurrentUser = async (): Promise<PicksForm> => {
+export const getPicksForCurrentUser = async (): Promise<
+  PicksForm | undefined
+> => {
   const currentWeekId = await getCurrentWeekId();
   const user = getCurrentUser();
   const userId = user.uid;
@@ -53,9 +55,12 @@ export const getPicksForCurrentUser = async (): Promise<PicksForm> => {
   );
   const querySnapshot = await getDocs(q);
   const [doc] = querySnapshot.docs;
-  const picks = doc.data() as PicksForm;
 
-  return picks;
+  if (doc) {
+    const picks = doc.data() as PicksForm;
+    picks.key = doc.id;
+    return picks;
+  }
 };
 
 export const savePicks = async (picks: PicksForm) => {
