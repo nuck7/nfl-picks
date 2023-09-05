@@ -65,6 +65,7 @@ export const getPicksForCurrentUser = async (): Promise<
 
 export const savePicks = async (picks: PicksForm) => {
   const user = getCurrentUser();
+  picks.user_name = user.displayName;
   picks.user_id = user.uid;
 
   if (picks.key) {

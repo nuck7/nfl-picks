@@ -253,6 +253,7 @@ export type PicksForm = {
   key?: string;
   picks: Pick[];
   user_id?: string;
+  user_name?: string | null;
   week_id: number;
 };
 
