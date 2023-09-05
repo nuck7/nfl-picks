@@ -57,7 +57,10 @@ const PicksForm = () => {
         <Form
             value={value}
             onChange={onChange}
-            onSubmit={() => savePicks(formState)}
+            onSubmit={async () => {
+                await savePicks(formState);
+                document.location.reload();
+            }}
             onReset={() => setValue({})}
         >
             {matchups ? matchups.map((matchup, index: any) => {
