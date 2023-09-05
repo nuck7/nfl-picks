@@ -250,14 +250,15 @@ export type Pick = {
 };
 
 export type PicksForm = {
+  user_name?: string | null;
   key?: string;
   picks: Pick[];
   user_id?: string;
-  user_name?: string | null;
   week_id: number;
 };
 
 export type PickRow = {
+  matchupName: string;
   matchup0: string;
   matchup1: string;
   matchup2: string;

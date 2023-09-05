@@ -23,10 +23,11 @@ const ESPN_PARAMS = {
 };
 
 export const espnFetchUrl = async <T>(url: string) => {
+  const securedUrl = url.replace('http:', 'https:')
   const response: AxiosResponse<T> = await axios({
     method: 'get',
     params: ESPN_PARAMS,
-    url,
+    url: securedUrl,
   });
   return response?.data;
 };

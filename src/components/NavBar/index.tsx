@@ -1,8 +1,10 @@
-import React from 'react';
-import { Avatar, Button, Nav } from 'grommet';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Avatar, Button } from 'grommet';
 import { Menu } from 'grommet-icons';
 import { StyledNav } from './index.styles';
 import { color } from '../../theme';
+import { auth } from '../../resources/firebase.config';
+import { DefaultAvatarImage } from '../../constants';
 
 interface Props {
     openSideBar: boolean,
@@ -12,6 +14,13 @@ interface Props {
 }
 
 const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setProfileMenu}) => {
+    const [avatarImage, setAvatarImage] = useState<string>(DefaultAvatarImage)
+
+    useEffect(() => {
+        if (auth.currentUser?.photoURL) {
+            setAvatarImage(auth.currentUser?.photoURL)
+        }
+    }, [auth.currentUser])
 
     return (
         <StyledNav direction="row" pad="medium">
@@ -20,7 +29,7 @@ const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setPr
                 primary 
                 onClick={() => setProfileMenu(!openProfileMenu)}
                 color={color.black}
-                icon={<Avatar src="//s.gravatar.com/avatar/b7fb138d53ba0f573212ccce38a7c43b?s=80" />}
+                icon={<Avatar src={avatarImage} />}
             />
         </StyledNav>
     )

@@ -4,8 +4,6 @@ import { EspnSeasons, EspnRef, SeasonCreate } from "../types";
 import { db } from "../resources/firebase.config";
 
 export const IngestSeasons = () => {
-    console.log("IngestSeasons")
-
     const getSeasonsEspn = async () => {
         const response = await getSeasons()
         processSeasons(response)
@@ -31,7 +29,6 @@ const transformSeason = async (seasonRef: EspnRef): Promise<any>=> {
 }
 
 const createFirebaseSeason = async (seasons: SeasonCreate[]) => {
-    console.log("CREATE FIREBASE")
     for (const season of seasons) {
         await setDoc(doc(db, "seasons"), season);
     }
