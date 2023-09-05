@@ -1,31 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import SelectField from '../SelectField';
-import { EspnCompetitor, EspnMatchup, Matchup, MatchupV2, Picks, Team, Week } from '../../types';
-import { useLocation } from 'react-router-dom';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Form } from 'grommet';
-import { pickDbToForm } from '../../utils/form';
-import { AtContainer, MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton } from './index.styles';
+
 import { emptyPickFormStateV2 } from '../../constants';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '../../resources/firebase.config';
-import { getDocuments, getPicks, getPicksForCurrentUser, savePicks } from '../../resources/firebase';
 import { getCurrentWeekId, getCurrentWeekMatchups } from '../../resources/espn';
+import { getPicksForCurrentUser, savePicks } from '../../resources/firebase';
+import { EspnCompetitor, EspnMatchup, PicksForm } from '../../types';
+import SelectField from '../SelectField';
+import { MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton } from './index.styles';
 
 const PicksForm = () => {
     const [value, setValue] = useState({});
-    const [weekId, setWeekId] = useState<number>();
+    const [, setWeekId] = useState<number>();
     const [matchups, setMatchups] = useState<EspnMatchup[]>([]);
-    const [picks, setPicks] = useState<any>();
-
-    const { pathname } = useLocation();
-    const pathMatch = pathname.match(/\/week\/(\d|5)$/);
-    const weekIdPath = pathMatch ? pathMatch[1] : pathMatch;
-
-    // if (weekIdPath != null) {
-    //     setWeekId(weekIdPath)
-    // }
-    const matchupCollectionRef = collection(db, 'matchups')
-    const pickCollectionRef = collection(db, 'picks')
+    const [picks, setPicks] = useState<PicksForm>();
 
     const [formState, setFormState] = useState(emptyPickFormStateV2);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
@@ -41,14 +28,16 @@ const PicksForm = () => {
     useMemo(() => {
         const fetchPicks = async () => {
             const picks = await getPicksForCurrentUser();
-            setPicks(picks);
+            if (picks) {
+                setFormState(picks)
+                setPicks(picks);
+            }
         }
         fetchPicks()
     }, [])
 
     useMemo(async() => {
         const weekId = await getCurrentWeekId()
-        console.log(`weekId ${weekId}`)
         setWeekId(weekId)
         const state = formState
         state.week_id = weekId
@@ -68,12 +57,7 @@ const PicksForm = () => {
         <Form
             value={value}
             onChange={onChange}
-            onSubmit={async () => {
-                await savePicks(formState);
-                console.log("Submit", JSON.stringify(formState))
-                // const submission = weekId ? await submitUpdatePicks(formState as any, parseInt(weekId)) : await submitCreatePicks(formState)
-                // alert(`Response: ${JSON.stringify(submission)}`)
-            }}
+            onSubmit={() => savePicks(formState)}
             onReset={() => setValue({})}
         >
             {matchups ? matchups.map((matchup, index: any) => {
