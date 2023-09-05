@@ -7,7 +7,8 @@
   "license": "MIT",
   "scripts": {
     "start": "webpack serve --port 3000 && docker build -t cors . && docker-compose up -d",
-    "build": "NODE_ENV=production webpack"
+    "build": "NODE_ENV=production webpack",
+    "deploy": "yarn build && firebase deploy"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
@@ -48,6 +49,7 @@
   "dependencies": {
     "axios": "0.27.2",
     "firebase": "^10.2.0",
+    "firebase-tools": "^12.5.2",
     "formik": "^2.2.9",
     "global": "^4.4.0",
     "grommet": "^2.25.3",

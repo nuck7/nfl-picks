@@ -11,7 +11,7 @@ const Standings = () => {
     const [userPicks, setUserPicks] = useState<PicksForm[]>([])
     const [matchups, setMatchups] = useState<EspnMatchup[]>([])
     const [columnHeaders, setColumnHeaders] = useState<any>([])
-    const pickCollectionRef = collection(db, 'picks')
+    const [rows, setRows] = useState<any>([])
 
     useMemo(() => {
         const fetchMatchups = async () => {
@@ -24,7 +24,6 @@ const Standings = () => {
     useEffect(() => {
         const fetchPicks = async () => {
             const picks: PicksForm[] = await getPicks()
-            console.log(`USER picks ${JSON.stringify(picks)}`)
             setUserPicks(picks)
         }
         fetchPicks()
@@ -32,19 +31,32 @@ const Standings = () => {
 
     useMemo(() => {
         if (matchups && userPicks) {
-            let columns = []
+            let rowData = []
+            let columns: Record<string, any> = {
+                matchup: {
+                    property: 'matchupName',
+                    header: 'Matchups'
+                }
+            }
             let index = 0
             for (const matchup of matchups) {
-                let pickRow: Record<string, string> = {} as PickRow;
-                for (const user of userPicks) {
-                    pickRow[`matchup${index}`] = user.picks[index].pickedTeam.name
-                    console.log(`pickRow ${JSON.stringify(pickRow)}`)
+                let pickRow: Record<string, any> = {
+                    matchupName: matchup.name
                 }
-                columns.push(pickRow)
+                for (const user of userPicks) {
+                    if (user.user_id) {
+                        columns[user.user_id] = {
+                            property: user.user_id,
+                            header: user.user_name,
+                        }
+                        pickRow[user.user_id] = user.picks[index].pickedTeam.name
+                    }
+                }
+                rowData.push(pickRow)
                 index++
             }
-            console.log(`ROWS ${JSON.stringify(columns)}`)
-            setColumnHeaders(columns)
+            setColumnHeaders(Object.values(columns))
+            setRows(rowData)
         }
     }, [matchups, userPicks])
 
@@ -52,7 +64,7 @@ const Standings = () => {
         <div>
             <DataTable
                 columns={columnHeaders}
-                data={columnHeaders}
+                data={rows}
             />
         </div>
     )

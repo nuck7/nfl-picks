@@ -2,6 +2,8 @@ import { PicksForm } from './types';
 
 export const EspnRegularSeasonAbbreviation = 'reg';
 
+export const DefaultAvatarImage = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
+
 export const AppMenuOptions = [
   {
     label: 'Home',
@@ -36,7 +38,7 @@ export const ProfileMenuOptions = [
   },
   {
     label: 'Log Out',
-    link: '/',
+    link: '/logout',
   },
 ];
 
@@ -592,6 +594,7 @@ export const emptyPickFormState = {
 };
 
 export const emptyPickFormStateV2: PicksForm = {
+  user_name: '',
   week_id: 0,
   picks: [
     {

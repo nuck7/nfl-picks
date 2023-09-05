@@ -17,6 +17,7 @@ import PicksForm from "../components/PickForm";
 import Teams from "../components/Teams";
 import Weeks from "../components/Weeks";
 import Seasons from "../components/Seasons";
+import { LogOut } from "../components/LogOut";
 
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false);
@@ -49,6 +50,7 @@ const App = () => {
                 <MainContainer gridArea="main" background={color.white} alignContent="center" align="center">
                     <Routes>
                         <Route path='login' element={<Login />} />
+                        <Route path='logout' element={<LogOut/>} />
 
                         <Route element={<ProtectedRoute />}>
                             <Route path='/' element={<Home />} />
@@ -57,6 +59,7 @@ const App = () => {
                             <Route path='seasons' element={<Seasons />} />
                             <Route path='picks' element={<PicksForm />} />
                             <Route path='standings' element={<Standings />} />
+
                         </Route>
                     </Routes>
                 </MainContainer>

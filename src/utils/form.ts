@@ -32,7 +32,6 @@ export const weekDbToForm = (week: WeekMatchupsAPI): WeekFormValues => {
     end_date: week.End,
     matchups: matchups,
   };
-  console.log('week form', weekFormData);
   return weekFormData;
 };
 
@@ -61,7 +60,6 @@ export const updateMatchupFormToDb = (
       HomeTeamID: matchup.home.ID,
       AwayTeamID: matchup.away.ID,
     }));
-  console.log('matchups', matchups);
   return matchups;
 };
 
@@ -99,7 +97,6 @@ export const pickDbToForm = (week: WeekMatchupsAPI): WeekFormValues => {
     end_date: week.End,
     matchups: matchups,
   };
-  console.log('week form', weekFormData);
   return weekFormData;
 };
 
