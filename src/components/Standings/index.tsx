@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import SelectField from '../SelectField';
-import { Table, TableHeader, TableRow, TableCell, TableBody, DataTable } from 'grommet';
-import { db } from '../../resources/firebase.config';
-import { getDocuments, getPicks } from '../../resources/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { DataTable } from 'grommet';
+import { getPicks } from '../../resources/firebase';
 import { getCurrentWeekMatchups } from '../../resources/espn';
-import { Picks, EspnMatchup, PickRow, PicksForm, Team } from '../../types';
+import { EspnMatchup, PicksForm } from '../../types';
 
 const Standings = () => {
     const [userPicks, setUserPicks] = useState<PicksForm[]>([])

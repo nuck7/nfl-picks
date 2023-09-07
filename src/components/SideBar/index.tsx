@@ -1,6 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Nav, Sidebar } from 'grommet';
-import { Link } from 'react-router-dom';
+import { Button, Nav, Sidebar } from 'grommet';
 import { MenuOption } from '../../types';
 
 interface Props {

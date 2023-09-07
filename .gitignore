@@ -105,3 +105,6 @@ dist
 
 #firebase configs
 firebase.config.ts
+.firebase
+.firebaserc
+firestore.rules

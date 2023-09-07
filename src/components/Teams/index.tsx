@@ -1,30 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { Team } from '../../types';
-import { DataTable, Text } from 'grommet';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '../../resources/firebase.config';
-import { getCurrentWeekMatchups } from '../../resources/espn';
+import { EspnTeam, EspnTeams } from '../../types';
+import { Box, DataTable, Text, Image } from 'grommet';
+import { espnFetchUrl, getTeams } from '../../resources/espn';
 
 const Teams = () => {
-    const [teams, setTeams] = useState<Team[]>([]);
-    const collectionRef = collection(db, 'teams')
+    const [teams, setTeams] = useState<EspnTeam[]>([]);
 
     useMemo(() => {
-        const fetchTeams = async () => {
-            const q = query(collectionRef)
-            const querySnapshot = await getDocs(q)
-            const teams = querySnapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    name: data.name,
-                    city: data.city,
-                }
-            })
-            setTeams(teams)
+        let teamList: EspnTeam[] = []
+        const getTeamsEspn = async () => {
+            const teams: EspnTeams = await getTeams()
+            for (const teamRef of teams.items) {
+                const team: EspnTeam = await espnFetchUrl(teamRef.$ref)
+                teamList.push(team)
+            }
+            setTeams(teamList)
         }
-
-        fetchTeams()
+        getTeamsEspn().catch(console.error);
     }, [])
 
     return (
@@ -37,13 +29,25 @@ const Teams = () => {
                     <DataTable
                         columns={[
                             {
-                                property: 'name',
+                                property: 'id',
+                                header: 'ID',
+                            },
+                            {
+                                property: 'displayName',
                                 header: <Text>Name</Text>,
                                 primary: true,
                             },
                             {
-                                property: 'city',
-                                header: 'City',
+                                property: 'logo',
+                                header: 'Logo',
+                                render: datum => (
+                                    <Box height="small" width="small">
+                                        <Image
+                                            fit="cover"
+                                            src={datum?.logos[0]?.href}
+                                        />
+                                    </Box>
+                                ),
                             },
                         ]}
                         data={teams}
