@@ -50,7 +50,6 @@
     "axios": "0.27.2",
     "firebase": "^10.2.0",
     "firebase-tools": "^12.5.2",
-    "formik": "^2.2.9",
     "global": "^4.4.0",
     "grommet": "^2.25.3",
     "grommet-icons": "^4.7.0",
@@ -65,7 +64,6 @@
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "react-firebaseui": "6.0.0",
-    "react-router-dom": "^6.3.0",
-    "yup": "^1.2.0"
+    "react-router-dom": "^6.3.0"
   }
 }
