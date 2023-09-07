@@ -1,18 +1,11 @@
 import axios, { AxiosResponse } from 'axios';
 import {
-  CreateMatchupsInput,
-  CreatePickInput,
-  CreateWeekInput,
-  Team,
-  MatchupsInput,
-  UpdateWeekInput,
-  Week,
-  WeekMatchupsAPI,
-  Matchup,
   EspnSeasons,
   EspnSeason,
   EspnEvent,
   EspnMatchup,
+  EspnTeams,
+  EspnTeam,
 } from '../types';
 import { getCurrentYear } from '../utils/espn';
 
@@ -23,7 +16,7 @@ const ESPN_PARAMS = {
 };
 
 export const espnFetchUrl = async <T>(url: string) => {
-  const securedUrl = url.replace('http:', 'https:')
+  const securedUrl = url?.replace('http:', 'https:')
   const response: AxiosResponse<T> = await axios({
     method: 'get',
     params: ESPN_PARAMS,
@@ -60,9 +53,16 @@ export const getCurrentWeekMatchups = async (): Promise<EspnMatchup[]> => {
   return matchups;
 };
 
-export const getTeamById = async (teamId: string) => {
+export const getTeams = async (): Promise<EspnTeams> => {
   const year = getCurrentYear();
-  const team = espnFetch(`seasons/${year}/teams/${teamId}`);
+  const teams: Promise<EspnTeams> = espnFetch(`seasons/${year}/teams`);
+
+  return teams;
+};
+
+export const getTeamById = async (teamId: string): Promise<EspnTeam> => {
+  const year = getCurrentYear();
+  const team: Promise<EspnTeam> = espnFetch(`seasons/${year}/teams/${teamId}`);
 
   return team;
 };

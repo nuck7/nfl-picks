@@ -67,6 +67,29 @@ export type EspnSeasons = {
   items: EspnRef[];
 };
 
+export type EspnTeams = {
+  count: number;
+  pageIndex: number;
+  pageSize: number;
+  pageCount: number;
+  items: EspnRef[];
+};
+
+export type EspnTeam = {
+  id: number;
+  location: string;
+  name: string;
+  displayName: string;
+  logos: EspnTeamImage[];
+};
+
+export type EspnTeamImage = {
+  href: string;
+  width: number;
+  height: number;
+  alt: string;
+}
+
 export type EspnRef = {
   $ref: string;
 };
@@ -146,38 +169,6 @@ export type DropdownOption = {
   value: number;
 };
 
-export type CreateMatchupsInput = {
-  HomeTeamID: number;
-  AwayTeamID: number;
-  WeekID: number;
-};
-
-export type MatchupsInput = {
-  ID: number;
-  HomeTeamID: number;
-  AwayTeamID: number;
-  WeekID: number;
-};
-
-export type CreatePickInput = {
-  UserID: number;
-  MatchupID: number;
-  WinnerID: number;
-};
-
-export type CreateWeekInput = {
-  Name: string;
-  Start: string;
-  End: string;
-};
-
-export type UpdateWeekInput = {
-  ID: number;
-  Name: string;
-  Start: string;
-  End: string;
-};
-
 export type FormMatchup = {
   id?: number;
   weekId?: number;
@@ -254,25 +245,6 @@ export type PicksForm = {
   key?: string;
   picks: Pick[];
   user_id?: string;
-  week_id: number;
-};
-
-export type PickRow = {
-  matchupName: string;
-  matchup0: string;
-  matchup1: string;
-  matchup2: string;
-  matchup3: string;
-  matchup4: string;
-  matchup5: string;
-  matchup6: string;
-  matchup7: string;
-  matchup8: string;
-  matchup9: string;
-  matchup10: string;
-  matchup11: string;
-  matchup12: string;
-  matchup13: string;
-  matchup14: string;
-  matchup15: string;
+  week_id: number | undefined;
+  tieBreakerPoints: number | undefined;
 };
