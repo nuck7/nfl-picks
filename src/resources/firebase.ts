@@ -29,7 +29,6 @@ export const getDocuments = async (
 
 export const getPicks = async (): Promise<PicksForm[]> => {
   const currentWeekId = await getCurrentWeekId();
-
   const q = query(
     collection(db, 'picks'),
     where('week_id', '==', currentWeekId)

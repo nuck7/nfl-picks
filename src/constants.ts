@@ -595,8 +595,9 @@ export const emptyPickFormState = {
 
 export const emptyPickFormStateV2: PicksForm = {
   user_name: '',
-  week_id: undefined,
-  tieBreakerPoints: undefined,
+  user_id: '',
+  week_id: '',
+  tieBreakerPoints: '',
   picks: [
     {
       pickedTeam: {

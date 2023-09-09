@@ -11,7 +11,7 @@ const SideBar:React.FC<Props> = ({options}) => {
     <Sidebar round="small">
         <Nav gap="small">
             {options.map((option: MenuOption) => (
-                <Button href={option.link}>{option.label}</Button>
+                <Button key={`${option.label}`} href={option.link}>{option.label}</Button>
             ))}
         </Nav>
     </Sidebar>
