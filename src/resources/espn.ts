@@ -35,7 +35,7 @@ export const getSeasons = () => espnFetch<EspnSeasons>('seasons');
 export const getSeason = (year: number | string) =>
   espnFetch<EspnSeason>(`seasons/${year}`);
 
-export const getCurrentSeason = async () => {
+export const getCurrentSeason = async (): Promise<EspnSeason> => {
   const year = getCurrentYear();
   return getSeason(year);
 };

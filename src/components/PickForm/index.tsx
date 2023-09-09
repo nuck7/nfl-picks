@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Form, TextInput, Image } from 'grommet';
 import { emptyPickFormStateV2 } from '../../constants';
-import { getCurrentWeekId, getCurrentWeekMatchups, getTeamById } from '../../resources/espn';
+import { getCurrentWeekId, getCurrentWeekMatchups, getTeamById, getTeams } from '../../resources/espn';
 import { getPicksForCurrentUser, savePicks } from '../../resources/firebase';
-import { EspnCompetitor, EspnMatchup, PicksForm } from '../../types';
+import { EspnCompetitor, EspnMatchup, EspnTeam, EspnTeams, PicksForm } from '../../types';
 import SelectField from '../SelectField';
 import { MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton, PointsContainer, StyledPointsFormField } from './index.styles';
 
@@ -11,6 +11,7 @@ const PicksForm = () => {
     const [value, setValue] = useState({});
     const [matchups, setMatchups] = useState<EspnMatchup[]>([]);
     const [picks, setPicks] = useState<PicksForm>();
+    const [teams, setTeams] = useState<EspnTeams[]>();
     const [formState, setFormState] = useState(emptyPickFormStateV2);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
 
@@ -31,6 +32,10 @@ const PicksForm = () => {
             }
         }
         fetchPicks()
+    }, [])
+
+    useMemo(() => {
+       
     }, [])
 
     useMemo(async () => {
@@ -54,7 +59,6 @@ const PicksForm = () => {
     //     const awayTeam = matchup.competitions[0].competitors[1].homeAway == 'away' ? matchup.competitions[0].competitors[1] : matchup.competitions[0].competitors[0]
     //     const homeTeamData = await getTeamById(homeTeam.id)
     //     const awayTeamData = await getTeamById(awayTeam.id)
-    //     console.log(`homeTeamData.logos[0].href ${homeTeamData.logos[0].href}`)
     //     return (
     //         <div>
     //             <Box height="small" width="small">
@@ -116,11 +120,11 @@ const PicksForm = () => {
                                         let state = formState
                                         for (const team of matchup.competitions[0].competitors) {
                                             if (team.homeAway == 'home') {
-                                                state.picks[index].homeTeam.id = parseInt(team.id)
+                                                state.picks[index].homeTeam.id = team.id
                                                 state.picks[index].homeTeam.name = teamNames[1]
                                             }
                                             if (team.homeAway == 'away') {
-                                                state.picks[index].awayTeam.id = parseInt(team.id)
+                                                state.picks[index].awayTeam.id = team.id
                                                 state.picks[index].awayTeam.name = teamNames[0]
                                             }
                                         }
@@ -139,10 +143,7 @@ const PicksForm = () => {
                 <MatchupLabel>
                     Tie Breaker Points
                 </MatchupLabel>
-                <StyledPointsFormField
-                    name='tieBreakerPoints'
-                    label={'Total points for Monday Night Game'}
-                >
+                <StyledPointsFormField name='tieBreakerPoints'>
                     <TextInput
                         focusIndicator={true}
                         name='tieBreakerPoints'
@@ -150,7 +151,7 @@ const PicksForm = () => {
                         value={formState.tieBreakerPoints}
                         onChange={event => {
                             let state = formState
-                            state.tieBreakerPoints = parseInt(event.target.value) ? parseInt(event.target.value) : undefined
+                            state.tieBreakerPoints = parseInt(event.target.value) ? parseInt(event.target.value) : ''
                             setFormState(state)
                         }}
                     />

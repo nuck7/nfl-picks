@@ -81,6 +81,7 @@ export type EspnTeam = {
   name: string;
   displayName: string;
   logos: EspnTeamImage[];
+  homeAway: string;
 };
 
 export type EspnTeamImage = {
@@ -108,6 +109,8 @@ export type EspnSeason = {
   type: {
     week: {
       number: number;
+      startDate: Date;
+      endDate: Date;
     };
   };
 };
@@ -244,7 +247,21 @@ export type PicksForm = {
   user_name?: string | null;
   key?: string;
   picks: Pick[];
-  user_id?: string;
-  week_id: number | undefined;
-  tieBreakerPoints: number | undefined;
+  user_id: string;
+  week_id: number | '';
+  tieBreakerPoints: number | '';
 };
+
+export type TeamsKeyed = {
+  [key: string]: EspnTeam;
+}
+
+export type PickKeyed = {
+  matchupName: string;
+  [key: string]: string;
+}
+
+export type StandingsRowData = {
+  teamName: string;
+  teamLogo: string;
+}
