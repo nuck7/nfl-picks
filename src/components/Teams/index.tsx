@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { EspnTeam, EspnTeams } from '../../types';
-import { Box, DataTable, Text, Image } from 'grommet';
 import { espnFetchUrl, getTeams } from '../../resources/espn';
+import TeamIcons from '../TeamIcon';
 
 const Teams = () => {
     const [teams, setTeams] = useState<EspnTeam[]>([]);
@@ -26,32 +26,33 @@ const Teams = () => {
             </h1>
             <div>
                 {teams.length ? (
-                    <DataTable
-                        columns={[
-                            {
-                                property: 'id',
-                                header: 'ID',
-                            },
-                            {
-                                property: 'displayName',
-                                header: <Text>Name</Text>,
-                                primary: true,
-                            },
-                            {
-                                property: 'logo',
-                                header: 'Logo',
-                                render: datum => (
-                                    <Box height="small" width="small">
-                                        <Image
-                                            fit="cover"
-                                            src={datum?.logos[0]?.href}
-                                        />
-                                    </Box>
-                                ),
-                            },
-                        ]}
-                        data={teams}
-                    />
+                    <TeamIcons options={teams} />
+                    // <DataTable
+                    //     columns={[
+                    //         {
+                    //             property: 'id',
+                    //             header: 'ID',
+                    //         },
+                    //         {
+                    //             property: 'displayName',
+                    //             header: <Text>Name</Text>,
+                    //             primary: true,
+                    //         },
+                    //         {
+                    //             property: 'logo',
+                    //             header: 'Logo',
+                    //             render: datum => (
+                    //                 <Box height="small" width="small">
+                    //                     <Image
+                    //                         fit="cover"
+                    //                         src={datum?.logos[0]?.href}
+                    //                     />
+                    //                 </Box>
+                    //             ),
+                    //         },
+                    //     ]}
+                    //     data={teams}
+                    // />
                 ) : null}
             </div>
         </div>

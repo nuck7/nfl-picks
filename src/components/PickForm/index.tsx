@@ -54,31 +54,6 @@ const PicksForm = () => {
         })
     }
 
-    // const getMatchupLabel = async (matchup: EspnMatchup) => {
-    //     const homeTeam = matchup.competitions[0].competitors[0].homeAway == 'home' ? matchup.competitions[0].competitors[0] : matchup.competitions[0].competitors[1]
-    //     const awayTeam = matchup.competitions[0].competitors[1].homeAway == 'away' ? matchup.competitions[0].competitors[1] : matchup.competitions[0].competitors[0]
-    //     const homeTeamData = await getTeamById(homeTeam.id)
-    //     const awayTeamData = await getTeamById(awayTeam.id)
-    //     return (
-    //         <div>
-    //             <Box height="small" width="small">
-    //                 <Image
-    //                     fit="cover"
-    //                     src={awayTeamData.logos[0].href}
-    //                 />
-    //             </Box>
-    //             <div>{`${awayTeamData.displayName} @`}</div>
-    //             <Box height="small" width="small">
-    //                 <Image
-    //                     fit="cover"
-    //                     src={homeTeamData.logos[0].href}
-    //                 />
-    //             </Box>
-    //             <div>{homeTeamData.displayName}</div>
-    //         </div>
-    //     )
-    // }
-
     return (
         <Form
             value={value}
@@ -95,7 +70,6 @@ const PicksForm = () => {
             {matchups ? matchups.map((matchup, index: any) => {
                 const teamNames = matchup.name.split(' at ')
                 const options = getMatchupOptions(matchup, teamNames)
-                // const matchuLabel = getMatchupLabel(matchup)
                 const matchuLabel = matchup.name
                 return (
                     <PickContainer key={`matchup_cont_${index}`}>

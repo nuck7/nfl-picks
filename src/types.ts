@@ -167,6 +167,16 @@ export type EspnCompetitor = {
   team: EspnRef;
 };
 
+export type EspnWeek = {
+  $ref: string;
+  number: number;
+  startDate: Date;
+  endDate: Date;
+  text: string;
+  rankings: EspnRef;
+  events: EspnRef;
+}
+
 export type DropdownOption = {
   label: string;
   value: number;

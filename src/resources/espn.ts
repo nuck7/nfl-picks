@@ -6,6 +6,7 @@ import {
   EspnMatchup,
   EspnTeams,
   EspnTeam,
+  EspnWeek,
 } from '../types';
 import { getCurrentYear } from '../utils/espn';
 
@@ -40,9 +41,18 @@ export const getCurrentSeason = async (): Promise<EspnSeason> => {
   return getSeason(year);
 };
 
+export const getWeek = (year: number, week: number | string): Promise<EspnWeek> => 
+  espnFetch<EspnWeek>(`seasons/${year}/types/2/weeks/${week}`);
+
 export const getCurrentWeekId = async () => {
   const season = await getCurrentSeason();
-  return season.type.week.number;
+  console.log(`current week ${season.type}`)
+  return season?.type?.week?.number;
+};
+
+export const getNextWeek = async () => {
+  const season = await getCurrentSeason();
+  return season.type.week.number+1;
 };
 
 export const getCurrentWeekMatchups = async (): Promise<EspnMatchup[]> => {

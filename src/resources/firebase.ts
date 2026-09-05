@@ -46,19 +46,20 @@ export const getPicksForCurrentUser = async (): Promise<
 > => {
   const currentWeekId = await getCurrentWeekId();
   const user = getCurrentUser();
-  const userId = user.uid;
-  const q = query(
-    collection(db, 'picks'),
-    where('week_id', '==', currentWeekId),
-    where('user_id', '==', userId)
-  );
-  const querySnapshot = await getDocs(q);
-  const [doc] = querySnapshot.docs;
+  if (currentWeekId || user) {
+    const q = query(
+      collection(db, 'picks'),
+      where('week_id', '==', currentWeekId),
+      where('user_id', '==', user.uid)
+    );
+    const querySnapshot = await getDocs(q);
+    const [doc] = querySnapshot.docs;
 
-  if (doc) {
-    const picks = doc.data() as PicksForm;
-    picks.key = doc.id;
-    return picks;
+    if (doc) {
+      const picks = doc.data() as PicksForm;
+      picks.key = doc.id;
+      return picks;
+    }
   }
 };
 
@@ -66,10 +67,9 @@ export const savePicks = async (picks: PicksForm) => {
   const user = getCurrentUser();
   picks.user_name = user.displayName;
   picks.user_id = user.uid;
-
   if (picks.key) {
     return setDoc(doc(db, 'picks', picks.key), picks);
   }
 
-  return await addDoc(collection(db, 'picks'), picks);
+  // return await addDoc(collection(db, 'picks'), picks);
 };

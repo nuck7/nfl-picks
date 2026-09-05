@@ -18,8 +18,8 @@ import Teams from '../components/Teams'
 import Weeks from '../components/Weeks'
 import Seasons from '../components/Seasons'
 import { LogOut } from '../components/LogOut'
-import { espnFetchUrl, getCurrentSeason, getTeams } from '../resources/espn'
-import { EspnTeam, EspnTeams, TeamsKeyed } from '../types'
+import { espnFetchUrl, getCurrentSeason, getTeams, getWeek } from '../resources/espn'
+import { EspnTeam, EspnTeams, EspnWeek, TeamsKeyed } from '../types'
 
 export const SubmitPicksContext = React.createContext(true)
 export const TeamsContext = React.createContext({})
@@ -32,14 +32,14 @@ const App = () => {
 
     useMemo(async () => {
         const season = await getCurrentSeason()
-        const weekEnd = new Date(season.type.week.endDate)
-        const picksEnd = new Date(weekEnd.getDate())
+        const nextWeek: EspnWeek = await getWeek(season.year, season.type.week.number+1)
+        const nextWeekStart = new Date(nextWeek.startDate)
         const nowUTC = new Date(new Date(Date.now()).toUTCString())
-        console.log(`nowUTC ${nowUTC}`)
-        console.log(`picksEnd ${picksEnd}`)
-        console.log(`compare ${nowUTC > picksEnd}`)
+        const cutOffDate = new Date()
+        cutOffDate.setDate(nextWeekStart.getDate()+1)
+        cutOffDate.setHours(12,0,0,0);
 
-        setCanSubmitPicks(nowUTC >= picksEnd)
+        setCanSubmitPicks(nowUTC >= cutOffDate)
     }, [])
 
     useEffect(() => {
