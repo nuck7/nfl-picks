@@ -7,5 +7,14 @@ import { MenuOption, Player } from '../types';
 // page.
 export const isAdmin = (user?: Player) => user?.role === 'admin'
 
-export const getVisibleMenuOptions = (options: MenuOption[], isAdmin: boolean) =>
-    options.filter((option) => !option.adminOnly || isAdmin)
+export const getVisibleMenuOptions = (
+    options: MenuOption[],
+    isAdmin: boolean,
+    isSignedIn = true
+) =>
+    options.filter((option) =>
+        !option.hidden
+        && (!option.adminOnly || isAdmin)
+        && (!option.authOnly || isSignedIn)
+        && (!option.anonOnly || !isSignedIn)
+    )

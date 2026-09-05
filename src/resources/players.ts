@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 import { CurrentUser, Player, UserRole } from '../types';
 import { isAdmin } from '../utils/admin';
+import { isValidEmail } from '../utils/validation';
 import { auth, db } from './firebase.config';
 
 const PlayersCollection = 'players';
@@ -37,7 +38,8 @@ export const getPlayers = async (): Promise<Player[]> => {
 // existing document is read first so a refresh never demotes an admin or blanks
 // a name.
 export const upsertCurrentPlayer = async (
-  firebaseUser: FirebaseUser
+  firebaseUser: FirebaseUser,
+  nameOverride?: string
 ): Promise<Player> => {
   const reference = doc(db, PlayersCollection, firebaseUser.uid);
   const existing = (await getDoc(reference)).data() as Player | undefined;
@@ -49,7 +51,11 @@ export const upsertCurrentPlayer = async (
 
   const record: Player = {
     id: firebaseUser.uid,
-    name: resolvePlayerName(source, existing?.name),
+    // An override wins outright. Sign-up needs this: createUserWithEmailAndPassword
+    // fires onAuthStateChanged before updateProfile has run, so the listener's
+    // upsert writes the email-derived fallback first -- and resolvePlayerName
+    // prefers a stored name, so without the override that wrong name would stick.
+    name: nameOverride?.trim() || resolvePlayerName(source, existing?.name),
     email: source.email ?? existing?.email ?? '',
     role: existing?.role ?? 'member',
     managed: false,
@@ -60,23 +66,30 @@ export const upsertCurrentPlayer = async (
   return record;
 };
 
-// A player with no login. The admin enters their picks for them.
+// A player with no login. The admin enters their picks for them. Both fields are
+// required: the name is what appears in the standings, and the email is what
+// lets the player be recognised if they ever sign in for themselves.
 export const addManagedPlayer = async ({
   name,
   email,
 }: {
   name: string;
-  email?: string;
+  email: string;
 }): Promise<Player> => {
-  const trimmed = name.trim();
+  const trimmedName = name.trim();
+  const trimmedEmail = email.trim();
 
-  if (!trimmed) {
+  if (!trimmedName) {
     throw new Error('A player needs a name.');
   }
 
+  if (!isValidEmail(trimmedEmail)) {
+    throw new Error('A player needs a valid email.');
+  }
+
   const record = {
-    name: trimmed,
-    email: email?.trim() ?? '',
+    name: trimmedName,
+    email: trimmedEmail,
     role: 'member' as UserRole,
     managed: true,
   };
@@ -99,9 +112,43 @@ export const setPlayerName = (playerId: string, name: string) => {
   return setDoc(doc(db, PlayersCollection, playerId), { name: trimmed }, { merge: true });
 };
 
+// A player naming themselves -- used both by the sign-up form and the profile
+// page. The auth profile is updated so the two don't drift, then the full player
+// record is written through upsertCurrentPlayer, which creates the document if
+// the auth listener hasn't got there yet. A partial { name } write would be
+// rejected on create, since the rules require role and managed to be present.
+export const setOwnName = async (name: string) => {
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    throw new Error('A player needs a name.');
+  }
+
+  if (!auth.currentUser) {
+    throw new Error('Not signed in.');
+  }
+
+  await updateProfile(auth.currentUser, { displayName: trimmed });
+
+  return upsertCurrentPlayer(auth.currentUser, trimmed);
+};
+
 export const useCurrentPlayer = (): CurrentUser => {
   const [user, setUser] = useState<Player>();
   const [loading, setLoading] = useState(true);
+
+  const refresh = async () => {
+    if (!auth.currentUser) {
+      return;
+    }
+    const existing = (
+      await getDoc(doc(db, PlayersCollection, auth.currentUser.uid))
+    ).data() as Player | undefined;
+
+    if (existing) {
+      setUser({ ...existing, id: auth.currentUser.uid });
+    }
+  };
 
   useEffect(
     () =>
@@ -132,5 +179,5 @@ export const useCurrentPlayer = (): CurrentUser => {
     []
   );
 
-  return { user, isAdmin: isAdmin(user), loading };
+  return { user, isAdmin: isAdmin(user), loading, refresh };
 };

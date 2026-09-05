@@ -125,3 +125,11 @@ export const PlayerSelectLabel = styled.label`
     font-size: 16px;
     margin-bottom: 8px;
 `
+
+export const LockedNotice = styled.div`
+    background: #f5f5f5;
+    border-left: 4px solid #B82601;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    color: #333333;
+`

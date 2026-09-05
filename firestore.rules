@@ -23,6 +23,11 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0;
     }
 
+    function hasEmail() {
+      return request.resource.data.email is string
+        && request.resource.data.email.size() > 0;
+    }
+
     // A player is a person in the pool. Those with an account are keyed by their
     // auth uid; managed players (no login, an admin enters their picks) get an
     // auto-id. Picks reference this id as user_id.
@@ -48,10 +53,13 @@ service cloud.firestore {
             || request.resource.data.email == resource.data.email)
         && hasName();
 
-      // Admins add managed players and manage everyone's role and name.
+      // Admins add managed players, who must carry both a name and an email --
+      // a self-created player is not held to the email requirement, because a
+      // provider is not obliged to give us one.
       allow create: if isAdmin()
         && request.resource.data.managed == true
-        && hasName();
+        && hasName()
+        && hasEmail();
 
       allow update, delete: if isAdmin();
     }

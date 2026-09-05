@@ -17,25 +17,30 @@ interface Props {
 }
 
 const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setProfileMenu}) => {
-    const { isAdmin } = useContext<CurrentUser>(CurrentUserContext)
+    const { user, isAdmin } = useContext<CurrentUser>(CurrentUserContext)
     const [avatarImage, setAvatarImage] = useState<string>(DefaultAvatarImage)
 
+    // Keyed on the player rather than auth.currentUser, which is a mutable object
+    // React can't compare -- the old effect only re-ran by coincidence. Resets to
+    // the generic avatar on sign-out so the previous user's photo doesn't linger.
     useEffect(() => {
-        if (auth.currentUser?.photoURL) {
-            setAvatarImage(auth.currentUser?.photoURL)
-        }
-    }, [auth.currentUser])
+        setAvatarImage(user && auth.currentUser?.photoURL
+            ? auth.currentUser.photoURL
+            : DefaultAvatarImage)
+    }, [user])
 
     return (
         <StyledNav direction="row" gap="none" pad={{ horizontal: 'medium', vertical: 'xsmall' }}>
-            <MenuButton
-                primary
-                onClick={() => setSideBar(!openSideBar)}
-                color={color.black}
-                icon={<Menu color={color.white} />}
-            />
+            {user ? (
+                <MenuButton
+                    primary
+                    onClick={() => setSideBar(!openSideBar)}
+                    color={color.black}
+                    icon={<Menu color={color.white} />}
+                />
+            ) : null}
             <NavLinks>
-                {getVisibleMenuOptions(AppMenuOptions, isAdmin).map((option: MenuOption) => (
+                {(user ? getVisibleMenuOptions(AppMenuOptions, isAdmin) : []).map((option: MenuOption) => (
                     <NavLink key={option.label} href={option.link} plain>
                         {option.label}
                     </NavLink>

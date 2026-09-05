@@ -1,9 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Select } from 'grommet';
-import { DropdownOption, EspnMatchup, TeamsKeyed } from '../../types';
-import { TeamsContext } from '../../App';
-import { getCurrentWeekId, getSeasonWeeks, getWeekMatchups } from '../../resources/espn';
-import { getCurrentYear } from '../../utils/espn';
+import { CurrentWeek, DropdownOption, Game, TeamsKeyed } from '../../types';
+import { CurrentWeekContext, TeamsContext } from '../../App';
+import { getWeekMatchups } from '../../resources/espn';
 import { getMatchupId } from '../../utils/teams';
 import { formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
 import MatchupHeading from '../MatchupHeading';
@@ -12,34 +11,40 @@ import { EmptyMessage, MatchupList, WeekSelectContainer } from './index.styles';
 
 const Schedule = () => {
     const teams = useContext<TeamsKeyed>(TeamsContext)
-    const year = getCurrentYear()
-    const [weeks, setWeeks] = useState<DropdownOption[]>([])
+    // The season, its calendar and the current week's games all come from the
+    // one scoreboard App already fetched.
+    const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
     const [selectedWeek, setSelectedWeek] = useState<DropdownOption>()
-    const [matchups, setMatchups] = useState<EspnMatchup[]>([])
+    const [matchups, setMatchups] = useState<Game[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Week list plus the week to open on. Defaults to the current week so the
-    // page lands somewhere useful rather than on week 1.
+    const weeks: DropdownOption[] = currentWeek.calendar.weeks.map((entry) => ({
+        label: entry.label,
+        value: entry.week,
+    }))
+
+    // Open on the current week, so the page lands somewhere useful rather than
+    // on week 1.
     useEffect(() => {
-        const fetchWeeks = async () => {
-            const [seasonWeeks, currentWeek] = await Promise.all([
-                getSeasonWeeks(year),
-                getCurrentWeekId(),
-            ])
-            const weekOptions = seasonWeeks.items.map((_, index) => ({
-                label: `Week ${index + 1}`,
-                value: index + 1,
-            }))
-            setWeeks(weekOptions)
-            setSelectedWeek(
-                weekOptions.find((week) => week.value === currentWeek) ?? weekOptions[0]
-            )
+        if (currentWeek.loading || selectedWeek) {
+            return
         }
-        fetchWeeks().catch(console.error)
-    }, [year])
+
+        setSelectedWeek(
+            weeks.find((week) => week.value === currentWeek.week) ?? weeks[0]
+        )
+    }, [currentWeek, selectedWeek, weeks])
 
     useEffect(() => {
-        if (!selectedWeek) {
+        if (currentWeek.loading || !selectedWeek) {
+            return
+        }
+
+        // The current week's games arrived with the calendar; only another week
+        // needs its own request.
+        if (selectedWeek.value === currentWeek.week) {
+            setMatchups(currentWeek.games)
+            setLoading(false)
             return
         }
 
@@ -49,7 +54,7 @@ const Schedule = () => {
         setLoading(true)
 
         const fetchMatchups = async () => {
-            const matchups = await getWeekMatchups(year, selectedWeek.value)
+            const matchups = await getWeekMatchups(currentWeek.season, selectedWeek.value)
             if (current) {
                 setMatchups(matchups)
             }
@@ -64,7 +69,7 @@ const Schedule = () => {
             })
 
         return () => { current = false }
-    }, [year, selectedWeek])
+    }, [currentWeek, selectedWeek])
 
     return (
         <div>
@@ -92,7 +97,7 @@ const Schedule = () => {
                         <DateSection key={section.key} date={section.date}>
                             {section.matchups.map((matchup) => (
                                 <MatchupRow key={getMatchupId(matchup)}>
-                                    <MatchupHeading alignSeparator teams={teams} matchup={matchup} />
+                                    <MatchupHeading alignSeparator teams={teams} game={matchup} />
                                     <GameTime>{formatGameTime(matchup.date)}</GameTime>
                                 </MatchupRow>
                             ))}

@@ -1,69 +1,82 @@
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { DataTable, Text } from 'grommet';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '../../resources/firebase.config';
-import { EspnRef, EspnSeason, EspnSeasons, Season } from '../../types';
-import { espnFetch, espnFetchUrl, getSeason, getSeasons } from '../../resources/espn';
-import { Timestamp } from 'firebase/firestore';
+import { CurrentWeek, Game } from '../../types';
+import { CurrentWeekContext } from '../../App';
+import { fetchSeasonScoreboard, toGamesByWeek } from '../../resources/espn';
+import { formatGameDateTime, getKickoffWindow } from '../../utils/schedule';
 
+type SeasonWeekRow = {
+    week: number;
+    label: string;
+    start?: Date;
+    end?: Date;
+};
+
+// The current season's weeks, with the times its games actually kick off.
+// ESPN's calendar carries start/end dates too, but they are administrative
+// week boundaries -- midnight to 11:59pm, and week 1's window spans ten days --
+// so the times come off the games instead.
 const Seasons = () => {
-    const [seasons, setSeasons] = useState<Season[]>([]);
+    const { calendar } = useContext<CurrentWeek>(CurrentWeekContext);
+    const [gamesByWeek, setGamesByWeek] = useState<Record<number, Game[]>>({});
 
-    useMemo(() => {
-        const getSeasonsEspn = async () => {
-            const response = await getSeasons()
-            processSeasons(response)
+    // One request covers the whole season, so every week's times come from a
+    // single fetch rather than one per week.
+    useEffect(() => {
+        if (!calendar.start || !calendar.end) {
+            return
         }
-        getSeasonsEspn().catch(console.error);
-    }, [])
 
-    const processSeasons = async (seasons: EspnSeasons) => {
-        let transformedSeasons = await Promise.all(seasons.items.map(async (seasonRef):Promise<any> => transformSeason(seasonRef)))
-        setSeasons(transformedSeasons)
-    }
+        fetchSeasonScoreboard(calendar)
+            .then((scoreboard) => setGamesByWeek(toGamesByWeek(scoreboard)))
+            .catch(console.error)
+    }, [calendar.start, calendar.end])
 
-    const transformSeason = async (seasonRef: EspnRef): Promise<any>=> {
-        const season = await espnFetchUrl<EspnSeason>(seasonRef.$ref)
-        if (season != null) {
-            return {
-                id: season.year.toString(),
-                name: season.displayName,
-                start: Timestamp.fromDate(new Date(season.startDate)),
-                end: Timestamp.fromDate(new Date(season.endDate)),
-            }
+    const rows: SeasonWeekRow[] = calendar.weeks.map((week) => {
+        const window = getKickoffWindow(gamesByWeek[week.week] ?? [])
+
+        return {
+            week: week.week,
+            label: week.label,
+            start: window?.start,
+            end: window?.end,
         }
-    }
+    })
 
     return (
         <div>
             <h1>
-                Seasons
+                {calendar.season ? `${calendar.season} Season` : 'Season'}
             </h1>
             <div>
-                {seasons.length ? (
+                {rows.length ? (
                     <DataTable
                         columns={[
                             {
-                                property: 'name',
-                                header: <Text>Name</Text>,
+                                property: 'label',
+                                header: <Text>Week</Text>,
                                 primary: true,
                             },
                             {
                                 property: 'start',
-                                header: 'Start',
-                                render: data => (
-                                    <Text>{data.start.toDate().toDateString()}</Text>
-                                    )
+                                header: 'First kickoff',
+                                render: (row: SeasonWeekRow) => (
+                                    <Text>
+                                        {row.start ? formatGameDateTime(row.start.toISOString()) : '—'}
+                                    </Text>
+                                ),
                             },
                             {
                                 property: 'end',
-                                header: 'End',
-                                render: data => (
-                                    <Text>{data.end.toDate().toDateString()}</Text>
-                                )
+                                header: 'Last kickoff',
+                                render: (row: SeasonWeekRow) => (
+                                    <Text>
+                                        {row.end ? formatGameDateTime(row.end.toISOString()) : '—'}
+                                    </Text>
+                                ),
                             },
                         ]}
-                        data={seasons}
+                        data={rows}
                     />
                 ) : null}
             </div>

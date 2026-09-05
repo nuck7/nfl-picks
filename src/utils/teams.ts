@@ -1,30 +1,20 @@
-import { EspnMatchup, TeamsKeyed } from "../types";
+import { Game, TeamsKeyed } from "../types";
 
-export const getTeamByHomeAway = (teams: TeamsKeyed, matchup: EspnMatchup, homeAway: string) => {
-    if (matchup.competitions[0].competitors[0].homeAway == homeAway) {
-        return teams[matchup.competitions[0].competitors[0].id]
-    }
-    return teams[matchup.competitions[0].competitors[1].id]
-}
+// A game carries only team ids; the display data lives in the teams map so a
+// logo url isn't duplicated into all 18 weeks.
+export const getTeamByHomeAway = (teams: TeamsKeyed, game: Game, homeAway: string) =>
+    teams[homeAway === 'home' ? game.home.id : game.away.id]
 
-// ESPN's competition id is stable per game, unlike the position of the matchup
-// in the events array. Picks are keyed off this so columns can't drift.
-export const getMatchupId = (matchup: EspnMatchup) => matchup.competitions[0].id
+// ESPN's competition id is stable per game, unlike the position of the game in
+// the week. Picks are keyed off this so columns can't drift.
+export const getMatchupId = (game: Game) => game.matchupId
 
-// ESPN returns name as "<away displayName> at <home displayName>", so " at " is
-// the separator to split on. Returns [away, home].
-export const getMatchupTeamNames = (matchup: EspnMatchup) => matchup.name.split(' at ')
+// Display label, using "@" rather than ESPN's "at". Prefers the resolved teams
+// and falls back to the names carried on the game itself, so it reads correctly
+// while the teams map is still loading. Both paths produce the same text.
+export const getMatchupLabel = (teams: TeamsKeyed, game: Game) => {
+    const homeTeam = getTeamByHomeAway(teams, game, 'home')
+    const awayTeam = getTeamByHomeAway(teams, game, 'away')
 
-// Display label, using "@" rather than ESPN's "at". Prefers the resolved teams so
-// the label doesn't depend on parsing, and falls back to the name while the teams
-// map is still loading. Both paths produce the same text.
-export const getMatchupLabel = (teams: TeamsKeyed, matchup: EspnMatchup) => {
-    const homeTeam = getTeamByHomeAway(teams, matchup, 'home')
-    const awayTeam = getTeamByHomeAway(teams, matchup, 'away')
-
-    if (homeTeam && awayTeam) {
-        return `${awayTeam.displayName} @ ${homeTeam.displayName}`
-    }
-
-    return getMatchupTeamNames(matchup).join(' @ ')
+    return `${awayTeam?.displayName ?? game.away.displayName} @ ${homeTeam?.displayName ?? game.home.displayName}`
 }

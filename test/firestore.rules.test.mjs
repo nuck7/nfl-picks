@@ -61,7 +61,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'players/admin-uid'), player({ name: 'Admin', email: 'admin@example.com', role: 'admin' }));
     await setDoc(doc(db, 'players/member-uid'), player({ name: 'Member', email: 'member@example.com' }));
     await setDoc(doc(db, 'players/other-uid'), player({ name: 'Other', email: 'other@example.com' }));
-    await setDoc(doc(db, 'players/managed-1'), player({ name: 'Uncle Dave', managed: true }));
+    await setDoc(doc(db, 'players/managed-1'),
+      player({ name: 'Uncle Dave', email: 'dave@example.com', managed: true }));
     await setDoc(doc(db, 'picks/member-pick'), pick('member-uid'));
     await setDoc(doc(db, 'picks/managed-pick'), pick('managed-1'));
     await setDoc(doc(db, 'weeks/week-1'), { name: 'Week 1' });
@@ -70,18 +71,21 @@ beforeEach(async () => {
 
 describe('admin comes only from the player document', () => {
   it('grants admin when the document says so', async () => {
-    await assertSucceeds(setDoc(doc(admin(), 'players/new-managed'), player({ managed: true })));
+    await assertSucceeds(setDoc(doc(admin(), 'players/new-managed'),
+      player({ managed: true, email: 'managed@example.com' })));
   });
 
   it('gives a signed-in user with no player document no admin powers', async () => {
-    await assertFails(setDoc(doc(stranger(), 'players/new-managed-2'), player({ managed: true })));
+    await assertFails(setDoc(doc(stranger(), 'players/new-managed-2'),
+      player({ managed: true, email: 'managed@example.com' })));
     await assertFails(setDoc(doc(stranger(), 'picks/forged'), pick('member-uid')));
     await assertFails(updateDoc(doc(stranger(), 'players/member-uid'), { role: 'admin' }));
   });
 
   it('gives no admin powers to a member whose email matches another player', async () => {
     // Nothing keys off email any more, so impersonating one buys nothing.
-    await assertFails(setDoc(doc(member(), 'players/sneaky'), player({ managed: true })));
+    await assertFails(setDoc(doc(member(), 'players/sneaky'),
+      player({ managed: true, email: 'managed@example.com' })));
   });
 });
 
@@ -120,16 +124,40 @@ describe('players', () => {
     await assertFails(setDoc(doc(member(), 'players/someone-else'), player()));
   });
 
+  it('lets a member rename themselves', async () => {
+    await assertSucceeds(updateDoc(doc(member(), 'players/member-uid'), { name: 'Chosen Name' }));
+  });
+
   it('stops a member editing another player', async () => {
     await assertFails(updateDoc(doc(member(), 'players/other-uid'), { name: 'Hacked' }));
   });
 
   it('stops a member adding a managed player', async () => {
-    await assertFails(setDoc(doc(member(), 'players/nope'), player({ managed: true })));
+    await assertFails(setDoc(doc(member(), 'players/nope'),
+      player({ managed: true, email: 'managed@example.com' })));
   });
 
-  it('lets an admin add a managed player', async () => {
-    await assertSucceeds(setDoc(doc(admin(), 'players/managed-2'), player({ managed: true })));
+  it('lets an admin add a managed player with a name and an email', async () => {
+    await assertSucceeds(setDoc(doc(admin(), 'players/managed-2'),
+      player({ managed: true, name: 'Uncle Dave', email: 'dave@example.com' })));
+  });
+
+  it('rejects an admin-added player with no email', async () => {
+    await assertFails(setDoc(doc(admin(), 'players/managed-3'),
+      player({ managed: true, name: 'No Email', email: '' })));
+  });
+
+  it('rejects an admin-added player with no name', async () => {
+    await assertFails(setDoc(doc(admin(), 'players/managed-4'),
+      player({ managed: true, name: '', email: 'noname@example.com' })));
+  });
+
+  it('still lets someone sign up when their provider gives no email', async () => {
+    // Self-created players are deliberately not held to the email requirement.
+    const db = testEnv.authenticatedContext('noemail-uid', {}).firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'players/noemail-uid'), player({ name: 'No Email', email: '' }))
+    );
   });
 
   it('lets an admin rename anyone', async () => {

@@ -1,10 +1,16 @@
 import { Box } from "grommet";
-import React from "react";
+import React, { useContext } from "react";
 import { ProfileMenuOptions } from "../../constants";
 import { color } from "../../theme";
 import SideBar from "../SideBar";
+import { CurrentUserContext } from "../../App";
+import { getVisibleMenuOptions } from "../../utils/admin";
+import { CurrentUser } from "../../types";
 
-const ProfileMenu = () => (
+const ProfileMenu = () => {
+    const { user, isAdmin } = useContext<CurrentUser>(CurrentUserContext)
+
+    return (
     <Box gridArea="profileNav"
         background={color.red}
         width="small"
@@ -12,8 +18,9 @@ const ProfileMenu = () => (
             { type: 'fadeIn', duration: 300 },
             { type: 'slideLeft', size: 'xlarge', duration: 150 },
         ]}>
-        <SideBar options={ProfileMenuOptions} />
+        <SideBar options={getVisibleMenuOptions(ProfileMenuOptions, isAdmin, !!user)} />
     </Box>
-)
+    )
+}
 
 export default ProfileMenu

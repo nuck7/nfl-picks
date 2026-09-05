@@ -1,4 +1,4 @@
-import { EspnMatchup, PicksForm, TeamsKeyed } from '../types';
+import { Game, PicksForm, TeamsKeyed } from '../types';
 import { getMatchupId, getTeamByHomeAway } from '../utils/teams';
 
 // Demo participants are appended to the real picks when the page is loaded with
@@ -15,9 +15,9 @@ const DemoParticipants = [
 ];
 
 export const makeDemoPicks = (
-  matchups: EspnMatchup[],
+  matchups: Game[],
   teams: TeamsKeyed,
-  weekId: number | ''
+  weekId: string
 ): PicksForm[] => {
   return DemoParticipants.map((participant, participantIndex) => {
     const picks = matchups.map((matchup, matchupIndex) => {

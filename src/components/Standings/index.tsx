@@ -2,9 +2,8 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'grommet';
 import { getPicks } from '../../resources/firebase';
 import { getPlayers } from '../../resources/players';
-import { getCurrentSeasonWeek, getCurrentWeekMatchups } from '../../resources/espn';
-import { EspnMatchup, EspnTeam, Pick, PickKeyed, PicksForm, Player, SeasonWeek, TeamsKeyed } from '../../types';
-import { TeamsContext } from '../../App';
+import { CurrentWeek, Pick, PickKeyed, PicksForm, Player, Team, TeamsKeyed } from '../../types';
+import { CurrentWeekContext, TeamsContext } from '../../App';
 import { getMatchupId, getMatchupLabel, getTeamByHomeAway } from '../../utils/teams';
 import { findPickForMatchup } from '../../utils/picks';
 import { isDemoMode, makeDemoPicks } from '../../fixtures/demoPicks';
@@ -22,9 +21,9 @@ type Column = {
 // as a pick for either side.
 const getPickedTeam = (
     pick: Pick | undefined,
-    homeTeam: EspnTeam,
-    awayTeam: EspnTeam
-): EspnTeam | undefined => {
+    homeTeam: Team,
+    awayTeam: Team
+): Team | undefined => {
     if (!pick) {
         return undefined
     }
@@ -42,20 +41,12 @@ const getPickedTeam = (
 
 const Standings = () => {
     const teams = useContext<TeamsKeyed>(TeamsContext)
+    // The week and its games are resolved once in App.
+    const { games: matchups, season, week, weekId } = useContext<CurrentWeek>(CurrentWeekContext)
     const [userPicks, setUserPicks] = useState<PicksForm[]>([])
     const [players, setPlayers] = useState<Player[]>([])
-    const [matchups, setMatchups] = useState<EspnMatchup[]>([])
-    const [seasonWeek, setSeasonWeek] = useState<SeasonWeek>()
     const [columnHeaders, setColumnHeaders] = useState<Column[]>([])
     const [rows, setRows] = useState<PickKeyed[]>([])
-
-    useEffect(() => {
-        const fetchMatchups = async () => {
-            const matchups = await getCurrentWeekMatchups()
-            setMatchups(matchups)
-        }
-        fetchMatchups().catch(console.error)
-    }, [])
 
     useEffect(() => {
         // Columns come from the roster, not from who happens to have submitted --
@@ -64,21 +55,18 @@ const Standings = () => {
     }, [])
 
     useEffect(() => {
-        const fetchSeasonWeek = async () => {
-            setSeasonWeek(await getCurrentSeasonWeek())
+        if (!weekId) {
+            return
         }
-        fetchSeasonWeek().catch(console.error)
-    }, [])
 
-    useEffect(() => {
         const fetchPicks = async () => {
-            const userPicks: PicksForm[] = await getPicks()
+            const userPicks: PicksForm[] = await getPicks(weekId)
             setUserPicks(userPicks)
         }
         // Firestore can reject (expired rules, offline). Demo mode should still
         // render, so swallow the failure and leave the real picks empty.
         fetchPicks().catch(console.error)
-    }, [])
+    }, [weekId])
 
     // teams must be a dependency: App loads it with 32 sequential ESPN requests,
     // so it always resolves after the matchups and picks do.
@@ -99,7 +87,7 @@ const Standings = () => {
         const unrostered = userPicks.filter((entry) => !players.some((player) => player.id === entry.user_id))
 
         const participants = isDemoMode()
-            ? [...roster, ...unrostered, ...makeDemoPicks(matchups, teams, seasonWeek?.week ?? '')]
+            ? [...roster, ...unrostered, ...makeDemoPicks(matchups, teams, weekId)]
             : [...roster, ...unrostered]
 
         // Keyed by matchup id so the Matchups column can render the same logo
@@ -114,7 +102,7 @@ const Standings = () => {
                 if (!matchup) {
                     return <>{datum.matchupName}</>
                 }
-                return <MatchupHeading compact teams={teams} matchup={matchup} />
+                return <MatchupHeading compact teams={teams} game={matchup} />
             },
         }]
 
@@ -161,7 +149,7 @@ const Standings = () => {
                 }
                 const pick = findPickForMatchup(participant.picks, matchup, index)
                 const pickedTeam = getPickedTeam(pick, homeTeam, awayTeam)
-                pickRow[participant.user_id] = pickedTeam?.logos[0]?.href
+                pickRow[participant.user_id] = pickedTeam?.logo
             }
 
             rowData.push(pickRow)
@@ -169,12 +157,12 @@ const Standings = () => {
 
         setColumnHeaders(columns)
         setRows(rowData)
-    }, [matchups, userPicks, players, teams, seasonWeek])
+    }, [matchups, userPicks, players, teams, weekId])
 
     return (
         <div>
             <h1>
-                {seasonWeek ? `${seasonWeek.season} Week ${seasonWeek.week}` : 'Standings'}
+                {week ? `${season} Week ${week}` : 'Standings'}
             </h1>
             <DataTable
                 columns={columnHeaders}

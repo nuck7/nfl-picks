@@ -1,23 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { EspnTeam, EspnTeams } from '../../types';
-import { espnFetchUrl, getTeams } from '../../resources/espn';
+import React, { useContext } from 'react';
+import { TeamsKeyed } from '../../types';
+import { TeamsContext } from '../../App';
 import TeamIcons from '../TeamIcon';
 
+// The teams are already loaded once into context at app start, so this page
+// renders from that rather than fetching its own copy.
 const Teams = () => {
-    const [teams, setTeams] = useState<EspnTeam[]>([]);
-
-    useMemo(() => {
-        let teamList: EspnTeam[] = []
-        const getTeamsEspn = async () => {
-            const teams: EspnTeams = await getTeams()
-            for (const teamRef of teams.items) {
-                const team: EspnTeam = await espnFetchUrl(teamRef.$ref)
-                teamList.push(team)
-            }
-            setTeams(teamList)
-        }
-        getTeamsEspn().catch(console.error);
-    }, [])
+    const teams = useContext<TeamsKeyed>(TeamsContext);
+    const options = Object.values(teams);
 
     return (
         <div>
@@ -25,35 +15,7 @@ const Teams = () => {
                 Teams
             </h1>
             <div>
-                {teams.length ? (
-                    <TeamIcons options={teams} />
-                    // <DataTable
-                    //     columns={[
-                    //         {
-                    //             property: 'id',
-                    //             header: 'ID',
-                    //         },
-                    //         {
-                    //             property: 'displayName',
-                    //             header: <Text>Name</Text>,
-                    //             primary: true,
-                    //         },
-                    //         {
-                    //             property: 'logo',
-                    //             header: 'Logo',
-                    //             render: datum => (
-                    //                 <Box height="small" width="small">
-                    //                     <Image
-                    //                         fit="cover"
-                    //                         src={datum?.logos[0]?.href}
-                    //                     />
-                    //                 </Box>
-                    //             ),
-                    //         },
-                    //     ]}
-                    //     data={teams}
-                    // />
-                ) : null}
+                {options.length ? <TeamIcons options={options} /> : null}
             </div>
         </div>
     )

@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 
 import { PicksForm, Player } from '../types';
-import { getCurrentWeekId } from './espn';
 import { db } from './firebase.config';
 
 export const getDocuments = async (
@@ -26,11 +25,13 @@ export const getDocuments = async (
   return querySnapshot.docs;
 };
 
-export const getPicks = async (): Promise<PicksForm[]> => {
-  const currentWeekId = await getCurrentWeekId();
+// The week is passed in rather than looked up here: this module stores picks,
+// and going out to ESPN to discover its own argument is what had /picks and
+// /standings resolving the same week three times over.
+export const getPicks = async (weekId: string): Promise<PicksForm[]> => {
   const q = query(
     collection(db, 'picks'),
-    where('week_id', '==', currentWeekId)
+    where('week_id', '==', weekId)
   );
   const querySnapshot = await getDocs(q);
   const picks = querySnapshot.docs.map((doc) => {
@@ -43,16 +44,16 @@ export const getPicks = async (): Promise<PicksForm[]> => {
 // Takes the player explicitly rather than reading auth.currentUser, so an admin
 // can load the picks of a managed player who has no account at all.
 export const getPicksForPlayer = async (
+  weekId: string,
   playerId: string
 ): Promise<PicksForm | undefined> => {
-  if (!playerId) {
+  if (!weekId || !playerId) {
     return undefined;
   }
 
-  const currentWeekId = await getCurrentWeekId();
   const q = query(
     collection(db, 'picks'),
-    where('week_id', '==', currentWeekId),
+    where('week_id', '==', weekId),
     where('user_id', '==', playerId)
   );
   const querySnapshot = await getDocs(q);

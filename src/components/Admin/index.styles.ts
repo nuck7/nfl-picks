@@ -53,3 +53,17 @@ export const NameCell = styled.div`
 export const NameInput = styled(TextInput)`
     max-width: 200px;
 `
+
+export const LockRow = styled.div`
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+`
+
+export const Hint = styled.p`
+    color: #666666;
+    font-size: 14px;
+    margin: 0 0 16px 0;
+`

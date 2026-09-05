@@ -6,6 +6,7 @@
    </head>
 <body style="margin:0">
    <div id="app"></div>
-   <script src="bundle.js"></script>
+   <!-- HtmlWebpackPlugin injects the bundle. A hard-coded tag here as well
+        loads it twice: two React roots, every effect and request doubled. -->
 </body>
 </html>

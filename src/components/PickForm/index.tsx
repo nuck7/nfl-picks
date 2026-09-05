@@ -1,18 +1,17 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Form, Select, TextInput } from 'grommet';
 import { createEmptyPickFormState } from '../../constants';
-import { getCurrentWeekId, getCurrentWeekMatchups } from '../../resources/espn';
 import { getPicksForPlayer, savePicks } from '../../resources/firebase';
 import { getPlayers } from '../../resources/players';
-import { CurrentUser, EspnCompetitor, EspnMatchup, PicksForm, Player, TeamsKeyed } from '../../types';
-import { CurrentUserContext, TeamsContext } from '../../App';
-import { getMatchupId, getMatchupTeamNames } from '../../utils/teams';
+import { CurrentUser, CurrentWeek, Game, PicksForm, Player, TeamsKeyed } from '../../types';
+import { CurrentUserContext, CurrentWeekContext, PickDeadlineContext, SubmitPicksContext, TeamsContext } from '../../App';
+import { getMatchupId } from '../../utils/teams';
 import { alignPicksToMatchups } from '../../utils/picks';
 import { formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
 import SelectField from '../SelectField';
 import MatchupHeading from '../MatchupHeading';
 import DateSection, { GameTime, MatchupRow } from '../DateSection';
-import { MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton, PointsContainer, StyledPointsFormField, TeamOption, TeamOptionLogo, PlayerSelectContainer, PlayerSelectLabel } from './index.styles';
+import { MatchupLabel, PickContainer, StyledFormField, TeamSelectContainer, SubmitButton, PointsContainer, StyledPointsFormField, TeamOption, TeamOptionLogo, PlayerSelectContainer, PlayerSelectLabel, LockedNotice } from './index.styles';
 
 type TeamOptionValue = {
     name: string;
@@ -32,8 +31,14 @@ export const renderTeamOption = (option: TeamOptionValue) => (
 const PicksForm = () => {
     const teams = useContext<TeamsKeyed>(TeamsContext);
     const currentUser = useContext<CurrentUser>(CurrentUserContext);
+    const canSubmit = useContext<boolean>(SubmitPicksContext);
+    const deadline = useContext<Date | undefined>(PickDeadlineContext);
+    // Admins can still enter picks after the lock -- that is the whole point of
+    // entering them on someone's behalf.
+    const locked = !canSubmit && !currentUser.isAdmin;
+    // The week and its games are resolved once in App.
+    const { games: matchups, weekId } = useContext<CurrentWeek>(CurrentWeekContext);
     const [value, setValue] = useState({});
-    const [matchups, setMatchups] = useState<EspnMatchup[]>([]);
     const [picks, setPicks] = useState<PicksForm>();
     // Who the picks are being entered for. Always the signed-in player unless an
     // admin switches it.
@@ -41,14 +46,6 @@ const PicksForm = () => {
     const [players, setPlayers] = useState<Player[]>([]);
     const [formState, setFormState] = useState(createEmptyPickFormState);
     const onChange = useCallback((nextValue: React.SetStateAction<{}>) => setValue(nextValue), []);
-
-    useEffect(() => {
-        const fetchMatchups = async () => {
-            const matchups = await getCurrentWeekMatchups()
-            setMatchups(matchups)
-        }
-        fetchMatchups().catch(console.error)
-    }, [])
 
     useEffect(() => {
         if (currentUser.user && !targetPlayer) {
@@ -73,7 +70,7 @@ const PicksForm = () => {
         let current = true
 
         const fetchPicks = async () => {
-            const picks = await getPicksForPlayer(targetPlayer.id);
+            const picks = await getPicksForPlayer(weekId, targetPlayer.id);
             if (!current) {
                 return
             }
@@ -85,7 +82,7 @@ const PicksForm = () => {
         fetchPicks().catch(console.error)
 
         return () => { current = false }
-    }, [targetPlayer])
+    }, [weekId, targetPlayer])
 
     // One slot per game in the week, carrying over anything already picked.
     // Re-runs when the saved document arrives so its picks are re-seated against
@@ -104,22 +101,16 @@ const PicksForm = () => {
     }, [matchups, picks, targetPlayer])
 
     useEffect(() => {
-        const setWeekId = async () => {
-            const weekId = await getCurrentWeekId()
-            setFormState((state) => ({ ...state, week_id: weekId }))
-        }
-        setWeekId().catch(console.error)
-    }, [matchups])
+        setFormState((state) => ({ ...state, week_id: weekId }))
+    }, [weekId])
 
-    const getMatchupOptions = (matchup: EspnMatchup, teamNames: string[]): TeamOptionValue[] => {
-        return matchup.competitions[0].competitors.map((competitor: EspnCompetitor) => {
-            return {
-                name: competitor.homeAway == 'away' ? teamNames[0] : teamNames[1],
-                id: parseInt(competitor.id),
-                logo: teams[competitor.id]?.logos[0]?.href,
-            }
-        })
-    }
+    // Away first, matching the order the matchup heading reads in.
+    const getMatchupOptions = (matchup: Game): TeamOptionValue[] =>
+        [matchup.away, matchup.home].map((side) => ({
+            name: side.displayName,
+            id: parseInt(side.id),
+            logo: teams[side.id]?.logo,
+        }))
 
     // formState.picks is aligned 1:1 with matchups by alignPicksToMatchups.
     const pickIndexes = new Map(matchups.map((matchup, index) => [getMatchupId(matchup), index]))
@@ -129,7 +120,7 @@ const PicksForm = () => {
             value={value}
             onChange={onChange}
             onSubmit={async () => {
-                if (!targetPlayer) {
+                if (!targetPlayer || locked) {
                     return
                 }
                 await savePicks(formState, targetPlayer);
@@ -140,6 +131,18 @@ const PicksForm = () => {
                 required: 'This is a required field.',
             }}
         >
+            {locked ? (
+                <LockedNotice>
+                    Picks for this week closed{deadline ? ` at ${deadline.toLocaleString()}` : ''}.
+                    You can look, but changes will not be saved.
+                </LockedNotice>
+            ) : null}
+            {!canSubmit && currentUser.isAdmin ? (
+                <LockedNotice>
+                    Picks closed{deadline ? ` at ${deadline.toLocaleString()}` : ''}.
+                    You can still submit as an admin.
+                </LockedNotice>
+            ) : null}
             {currentUser.isAdmin && players.length ? (
                 <PlayerSelectContainer>
                     <PlayerSelectLabel htmlFor='pick_player'>Entering picks for</PlayerSelectLabel>
@@ -160,11 +163,7 @@ const PicksForm = () => {
                         // Grouping reorders the matchups for display, so the pick
                         // slot is looked up by id rather than by position.
                         const index = pickIndexes.get(getMatchupId(matchup)) ?? -1
-                        // ESPN's name is "<away> at <home>", so " at " is the
-                        // separator. The "@" is a display concern, handled by
-                        // MatchupHeading.
-                        const teamNames = getMatchupTeamNames(matchup)
-                        const options = getMatchupOptions(matchup, teamNames)
+                        const options = getMatchupOptions(matchup)
                         // Empty slots hold a { id: 0, name: '' } sentinel, which
                         // grommet would treat as a selection (it only checks
                         // truthiness), showing the clear button and hiding the
@@ -176,7 +175,7 @@ const PicksForm = () => {
                         return (
                             <PickContainer key={getMatchupId(matchup)}>
                                 <MatchupRow>
-                                    <MatchupHeading leadingLogos alignSeparator teams={teams} matchup={matchup} />
+                                    <MatchupHeading leadingLogos alignSeparator teams={teams} game={matchup} />
                                     <GameTime>{formatGameTime(matchup.date)}</GameTime>
                                 </MatchupRow>
                                 <TeamSelectContainer>
@@ -195,20 +194,15 @@ const PicksForm = () => {
                                             onChange={event => {
                                                 setFormState((state) => {
                                                     const nextPicks = [...state.picks]
-                                                    const homeCompetitor = matchup.competitions[0].competitors
-                                                        .find((team) => team.homeAway == 'home')
-                                                    const awayCompetitor = matchup.competitions[0].competitors
-                                                        .find((team) => team.homeAway == 'away')
-
                                                     nextPicks[index] = {
                                                         matchupId: getMatchupId(matchup),
                                                         homeTeam: {
-                                                            id: homeCompetitor?.id ?? 0,
-                                                            name: teamNames[1] ?? '',
+                                                            id: matchup.home.id,
+                                                            name: matchup.home.displayName,
                                                         },
                                                         awayTeam: {
-                                                            id: awayCompetitor?.id ?? 0,
-                                                            name: teamNames[0] ?? '',
+                                                            id: matchup.away.id,
+                                                            name: matchup.away.displayName,
                                                         },
                                                         // The clear button fires onChange
                                                         // with value '', and options carry
@@ -253,7 +247,7 @@ const PicksForm = () => {
                     />
                 </StyledPointsFormField>
             </PointsContainer>
-            <SubmitButton primary size="large" type="submit">Submit</SubmitButton>
+            <SubmitButton primary size="large" type="submit" disabled={locked}>Submit</SubmitButton>
         </Form>
     );
 }

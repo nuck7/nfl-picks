@@ -1,9 +1,13 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Button, DataTable, Form, TextInput } from 'grommet';
-import { CurrentUserContext } from '../../App';
+import { CurrentUserContext, CurrentWeekContext } from '../../App';
 import { addManagedPlayer, getPlayers, setPlayerName, setPlayerRole } from '../../resources/players';
-import { CurrentUser, Player } from '../../types';
+import { CurrentUser, CurrentWeek, Player } from '../../types';
 import { isAdmin } from '../../utils/admin';
+import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
+import { getWeekSettings, setWeekLock } from '../../resources/weeks';
+import { getPickDeadline } from '../../utils/picks';
+import { fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/schedule';
 import {
     AddPlayerForm,
     ErrorMessage,
@@ -12,6 +16,8 @@ import {
     NameCell,
     NameInput,
     RoleLabel,
+    Hint,
+    LockRow,
     Section,
     SeedNote,
     StyledFormField,
@@ -22,6 +28,7 @@ const Admin = () => {
     const [players, setPlayers] = useState<Player[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string>()
+    const [notice, setNotice] = useState<string>()
     const [saving, setSaving] = useState<string>()
 
     const [newName, setNewName] = useState('')
@@ -30,6 +37,54 @@ const Admin = () => {
 
     const [editingId, setEditingId] = useState<string>()
     const [editingName, setEditingName] = useState('')
+
+    const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
+    const [lockValue, setLockValue] = useState('')
+    const [savingLock, setSavingLock] = useState(false)
+
+    // The deadline the week would use with no override, shown so an admin can
+    // see what they are changing away from.
+    const defaultDeadline = getPickDeadline(currentWeek.games)
+
+    useEffect(() => {
+        if (!currentWeek.weekId) {
+            return
+        }
+        getWeekSettings(currentWeek.weekId)
+            .then((settings) => setLockValue(toDateTimeLocalValue(
+                settings?.lockAt || defaultDeadline?.toISOString()
+            )))
+            .catch(console.error)
+    }, [currentWeek.weekId])
+
+    const saveLock = async () => {
+        setSavingLock(true)
+        setError(undefined)
+        try {
+            await setWeekLock(currentWeek.weekId, fromDateTimeLocalValue(lockValue))
+            setNotice(`Picks for week ${currentWeek.week} now lock at ${new Date(lockValue).toLocaleString()}.`)
+        } catch (saveError) {
+            console.error(saveError)
+            setError('Could not save the lock time. Check that the Firestore rules allow admins to write the weeks collection.')
+        } finally {
+            setSavingLock(false)
+        }
+    }
+
+    const resetLock = async () => {
+        setSavingLock(true)
+        setError(undefined)
+        try {
+            await setWeekLock(currentWeek.weekId, '')
+            setLockValue(toDateTimeLocalValue(defaultDeadline?.toISOString()))
+            setNotice('Lock time reset to the default for this week.')
+        } catch (saveError) {
+            console.error(saveError)
+            setError('Could not reset the lock time.')
+        } finally {
+            setSavingLock(false)
+        }
+    }
 
     const fetchPlayers = useCallback(async () => {
         setLoading(true)
@@ -49,6 +104,10 @@ const Admin = () => {
             fetchPlayers()
         }
     }, [currentUser.isAdmin, fetchPlayers])
+
+    const newEmailError = newEmail.trim() && !isValidEmail(newEmail)
+        ? InvalidEmailMessage
+        : undefined
 
     const addPlayer = async () => {
         setAdding(true)
@@ -131,6 +190,45 @@ const Admin = () => {
             </Intro>
 
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
+            {notice ? <Message>{notice}</Message> : null}
+
+            <Section>
+                <h2>Picks lock time</h2>
+                <Hint>
+                    {currentWeek.loading
+                        ? 'Loading this week\u2026'
+                        : `Week ${currentWeek.week} of the ${currentWeek.season} season. `}
+                    {!currentWeek.loading && defaultDeadline
+                        ? `By default picks lock at ${defaultDeadline.toLocaleString()}, noon on the day of the first game.`
+                        : null}
+                </Hint>
+                <Form onSubmit={saveLock}>
+                    <LockRow>
+                        <StyledFormField name='lockAt' htmlFor='week_lock' label='Locks at'>
+                            <TextInput
+                                id='week_lock'
+                                name='lockAt'
+                                type='datetime-local'
+                                value={lockValue}
+                                onChange={(event) => setLockValue(event.target.value)}
+                            />
+                        </StyledFormField>
+                        <Button
+                            primary
+                            type='submit'
+                            label='Save lock time'
+                            disabled={savingLock || !lockValue || !currentWeek.weekId}
+                        />
+                        <Button
+                            secondary
+                            type='button'
+                            label='Reset to default'
+                            disabled={savingLock || !currentWeek.weekId}
+                            onClick={resetLock}
+                        />
+                    </LockRow>
+                </Form>
+            </Section>
 
             <Section>
                 <h2>Add a player</h2>
@@ -145,11 +243,16 @@ const Admin = () => {
                                 onChange={(event) => setNewName(event.target.value)}
                             />
                         </StyledFormField>
-                        <StyledFormField name='playerEmail' htmlFor='player_email' label='Email'>
+                        <StyledFormField
+                            name='playerEmail'
+                            htmlFor='player_email'
+                            label='Email'
+                            error={newEmailError}
+                        >
                             <TextInput
                                 id='player_email'
                                 name='playerEmail'
-                                placeholder='Optional'
+                                placeholder='Required'
                                 value={newEmail}
                                 onChange={(event) => setNewEmail(event.target.value)}
                             />
@@ -158,7 +261,7 @@ const Admin = () => {
                             primary
                             type='submit'
                             label='Add player'
-                            disabled={adding || !newName.trim()}
+                            disabled={adding || !newName.trim() || !isValidEmail(newEmail)}
                         />
                     </AddPlayerForm>
                 </Form>

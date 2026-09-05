@@ -1,10 +1,10 @@
 import React from 'react';
 import { Grid, Image } from 'grommet';
-import { EspnTeam } from '../../types';
+import { Team } from '../../types';
 import { StyledText, TeamContainer } from './index.styles';
 
 interface Props {
-    options: EspnTeam[]
+    options: Team[]
 }
 
 const TeamIcons: React.FC<Props> = ({ options }) => {
@@ -19,11 +19,11 @@ const TeamIcons: React.FC<Props> = ({ options }) => {
                 { name: 'main', start: [1, 1], end: [1, 1] },
             ]}
         >
-            {options.map((option: EspnTeam) => (
+            {options.map((option: Team) => (
                 <TeamContainer key={option.id}>
                     <Image
                         fit="contain"
-                        src={option.logos[0]?.href}
+                        src={option.logo}
                     />
                     {/* displayName is "<location> <name>", so pairing it with
                         location repeated the city. name is just "Cardinals". */}

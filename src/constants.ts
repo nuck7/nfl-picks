@@ -6,20 +6,21 @@ export const DefaultAvatarImage = 'https://cdn.pixabay.com/photo/2015/10/05/22/3
 
 export const AppMenuOptions = [
   {
-    label: 'Home',
-    link: '/',
-  },
-  {
     label: 'Submit Picks',
     link: 'picks',
   },
+  // Hidden for now -- neither page carries anything useful yet. The routes are
+  // still registered, so an existing link keeps working and un-hiding is a
+  // one-word change.
   {
     label: 'Seasons',
     link: 'seasons',
+    hidden: true,
   },
   {
     label: 'Teams',
     link: 'teams',
+    hidden: true,
   },
   {
     label: 'Standings',
@@ -40,14 +41,17 @@ export const ProfileMenuOptions = [
   {
     label: 'Profile',
     link: '/profile',
+    authOnly: true,
   },
   {
     label: 'Log In',
     link: '/',
+    anonOnly: true,
   },
   {
     label: 'Log Out',
     link: '/logout',
+    authOnly: true,
   },
 ];
 
