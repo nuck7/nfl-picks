@@ -104,7 +104,9 @@ dist
 .tern-port
 
 #firebase configs
+# firebase.config.ts holds the web API key -- see firebase.config.ts.template.
+# firestore.rules is deliberately NOT ignored: it is server-enforced security
+# policy with no secrets in it, and it needs to be reviewable in the repo.
 firebase.config.ts
 .firebase
 .firebaserc
-firestore.rules

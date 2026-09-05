@@ -11,7 +11,7 @@ const Home = () => (
             Instructions
         </StyledListTitle>
         <StyledList>
-            <StyledListItem>Login with Google, Facebook, Twitter</StyledListItem>
+            <StyledListItem>Sign in with Google, or create an account with your email</StyledListItem>
             <StyledListItem>Click the top left menu and select Submit Picks</StyledListItem>
             <StyledListItem>Fill out the form and click submit at the bottom</StyledListItem>
             <StyledListItem>Click the top left menu and select Standings to view everyones picks</StyledListItem>

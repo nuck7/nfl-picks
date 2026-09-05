@@ -25,3 +25,7 @@ export const margin = {
     xlarge: '64px',
     xxlarge: '72px'
 }
+// Below this width the nav collapses to the hamburger menu.
+export const breakpoint = {
+    mobile: '768px'
+}

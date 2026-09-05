@@ -98,3 +98,30 @@ export const DateContainer = styled.div`
       flex-direction: row;
       justify-content: space-between;
   `
+export const TeamOption = styled.div`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+`
+
+export const TeamOptionLogo = styled.img`
+    height: 24px;
+    width: 24px;
+    object-fit: contain;
+`
+
+
+
+
+export const PlayerSelectContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    max-width: 320px;
+    margin-bottom: 32px;
+`
+
+export const PlayerSelectLabel = styled.label`
+    font-size: 16px;
+    margin-bottom: 8px;
+`

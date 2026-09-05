@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin is held in the player's own document -- there is no hardcoded
+    // allowlist here or in the client. The collection starts empty, so the FIRST
+    // admin must be set by hand in the Firebase console (Firestore -> players ->
+    // your uid -> role: "admin"); console writes bypass these rules. After that,
+    // admins promote each other from the Admin page.
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/players/$(request.auth.uid))
+        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function hasName() {
+      return request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+    }
+
+    // A player is a person in the pool. Those with an account are keyed by their
+    // auth uid; managed players (no login, an admin enters their picks) get an
+    // auto-id. Picks reference this id as user_id.
+    match /players/{playerId} {
+      allow read: if isSignedIn();
+
+      // Signing in creates your own record, always as a member and never managed
+      // -- this is what stops someone granting themselves the admin role.
+      allow create: if isSignedIn()
+        && request.auth.uid == playerId
+        && request.resource.data.role == 'member'
+        && request.resource.data.managed == false
+        && hasName();
+
+      // You may refresh your own name, but not your role, not your managed flag,
+      // and not your email to something other than the one on your token -- the
+      // client reads email to decide seed-admin, so a forged one must not stick.
+      allow update: if isSignedIn()
+        && request.auth.uid == playerId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.managed == resource.data.managed
+        && (request.resource.data.email == request.auth.token.email
+            || request.resource.data.email == resource.data.email)
+        && hasName();
+
+      // Admins add managed players and manage everyone's role and name.
+      allow create: if isAdmin()
+        && request.resource.data.managed == true
+        && hasName();
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /picks/{pickId} {
+      allow read: if isSignedIn();
+
+      // Admins submit on behalf of players who have no account of their own, so
+      // the owner is not required to be the signed-in user.
+      allow create: if isSignedIn()
+        && (request.resource.data.user_id == request.auth.uid || isAdmin());
+
+      allow update: if isSignedIn()
+        && (resource.data.user_id == request.auth.uid || isAdmin());
+
+      allow delete: if isAdmin();
+    }
+
+    match /weeks/{weekId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /seasons/{seasonId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

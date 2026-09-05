@@ -13,22 +13,31 @@ import AppMenu from '../components/AppMenu'
 import { MainContainer, Theme } from './index.styles'
 import { color } from '../theme'
 import Standings from '../components/Standings'
+import Schedule from '../components/Schedule'
+import Admin from '../components/Admin'
 import PicksForm from '../components/PickForm'
 import Teams from '../components/Teams'
 import Weeks from '../components/Weeks'
 import Seasons from '../components/Seasons'
 import { LogOut } from '../components/LogOut'
 import { espnFetchUrl, getCurrentSeason, getTeams, getWeek } from '../resources/espn'
-import { EspnTeam, EspnTeams, EspnWeek, TeamsKeyed } from '../types'
+import { CurrentUser, EspnTeam, EspnTeams, EspnWeek, TeamsKeyed } from '../types'
+import { useCurrentPlayer } from '../resources/players'
 
 export const SubmitPicksContext = React.createContext(true)
 export const TeamsContext = React.createContext({})
+export const CurrentUserContext = React.createContext<CurrentUser>({
+    user: undefined,
+    isAdmin: false,
+    loading: true,
+})
 
 const App = () => {
     const [showSideBar, setShowSideBar] = React.useState(false)
     const [showProfileMenu, setShowProfileMenu] = React.useState(false)
     const [canSubmitPicks, setCanSubmitPicks] = useState(true)
     const [teams, setTeams] = useState<TeamsKeyed>({});
+    const currentUser = useCurrentPlayer();
 
     useMemo(async () => {
         const season = await getCurrentSeason()
@@ -56,6 +65,7 @@ const App = () => {
     }, [])
 
     return (
+        <CurrentUserContext.Provider value={currentUser}>
         <TeamsContext.Provider value={teams}>
             <SubmitPicksContext.Provider value={canSubmitPicks}>
                 <Grommet theme={Theme}>
@@ -93,6 +103,8 @@ const App = () => {
                                     <Route path='seasons' element={<Seasons />} />
                                     <Route path='picks' element={<PicksForm />} />
                                     <Route path='standings' element={<Standings />} />
+                                    <Route path='schedule' element={<Schedule />} />
+                                    <Route path='admin' element={<Admin />} />
 
                                 </Route>
                             </Routes>
@@ -104,6 +116,7 @@ const App = () => {
                 </Grommet>
             </SubmitPicksContext.Provider>
         </TeamsContext.Provider>
+        </CurrentUserContext.Provider>
     )
 }
 

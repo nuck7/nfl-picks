@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 export type MenuOption = {
   link: string;
   label: string;
+  adminOnly?: boolean;
 };
 
 export type Season = {
@@ -24,10 +25,24 @@ export type Team = {
   city?: string;
 };
 
-export type User = {
+export type UserRole = 'admin' | 'member';
+
+export type Player = {
+  // The Firebase Auth uid for anyone with an account, an auto-id for a managed
+  // player. Stored on each pick as user_id.
   id: string;
+  // Always non-empty -- see resolvePlayerName in resources/players.ts.
   name: string;
   email: string;
+  role: UserRole;
+  // true = no login; an admin enters this player's picks for them.
+  managed: boolean;
+};
+
+export type CurrentUser = {
+  user?: Player;
+  isAdmin: boolean;
+  loading: boolean;
 };
 
 export type Matchup = {
@@ -96,6 +111,25 @@ export type EspnRef = {
 };
 
 export type EspnEvent = {
+  items: EspnRef[];
+};
+
+export type MatchupsByDate = {
+  key: string;
+  date: string;
+  matchups: EspnMatchup[];
+};
+
+export type SeasonWeek = {
+  season: number;
+  week: number;
+};
+
+export type EspnWeeks = {
+  count: number;
+  pageIndex: number;
+  pageSize: number;
+  pageCount: number;
   items: EspnRef[];
 };
 
@@ -251,6 +285,9 @@ export type Pick = {
   awayTeam: Team;
   homeTeam: Team;
   pickedTeam: Team;
+  // ESPN competition id. Optional: documents written before this field existed
+  // fall back to index-based matching when read.
+  matchupId?: string;
 };
 
 export type PicksForm = {
@@ -268,7 +305,8 @@ export type TeamsKeyed = {
 
 export type PickKeyed = {
   matchupName: string;
-  [key: string]: string;
+  // undefined means the participant has no pick for that matchup
+  [key: string]: string | undefined;
 }
 
 export type StandingsRowData = {

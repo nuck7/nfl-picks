@@ -1,16 +1,15 @@
 import Login from '../Login';
-import React from 'react';
+import React, { useContext } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useAuth } from '../../resources/auth';
+import { CurrentUserContext } from '../../App';
+import { CurrentUser } from '../../types';
 
 export const ProtectedRoute = () => {
-  const user = useAuth();
+  const { user, loading } = useContext<CurrentUser>(CurrentUserContext);
 
-  return typeof user === 'undefined' ? (
-    <></>
-  ) : user ? (
-    <Outlet />
-  ) : (
-    <Login />
-  );
+  if (loading) {
+    return <></>;
+  }
+
+  return user ? <Outlet /> : <Login />;
 };

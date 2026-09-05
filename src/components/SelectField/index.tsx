@@ -42,7 +42,7 @@ const SelectField: React.FC<Props> = ({
             value={value}
             defaultValue={defaultValue}
             onChange={onChange}
-            clear={true}
+            clear={{ label: 'Clear selection' }}
             labelKey={labelKey}
             valueKey={valueKey}
         />

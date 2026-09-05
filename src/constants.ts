@@ -25,6 +25,15 @@ export const AppMenuOptions = [
     label: 'Standings',
     link: 'standings',
   },
+  {
+    label: 'Schedule',
+    link: 'schedule',
+  },
+  {
+    label: 'Admin',
+    link: 'admin',
+    adminOnly: true,
+  },
 ];
 
 export const ProfileMenuOptions = [
@@ -593,235 +602,14 @@ export const emptyPickFormState = {
   ],
 };
 
-export const emptyPickFormStateV2: PicksForm = {
+// Returns a fresh object every call. Previously this was a shared module-level
+// constant that PickForm mutated in place, which leaked one session's picks into
+// the next "empty" form. The picks array is sized from the week's matchups by
+// alignPicksToMatchups, since weeks vary between 13 and 16 games.
+export const createEmptyPickFormState = (): PicksForm => ({
   user_name: '',
   user_id: '',
   week_id: '',
   tieBreakerPoints: '',
-  picks: [
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-    {
-      pickedTeam: {
-        id: 0,
-        name: '',
-      },
-      homeTeam: {
-        id: 0,
-        name: '',
-      },
-      awayTeam: {
-        id: 0,
-        name: '',
-      },
-    },
-  ],
-};
+  picks: [],
+});
