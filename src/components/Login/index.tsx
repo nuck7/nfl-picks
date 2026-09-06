@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Form, TextInput } from 'grommet';
+import { Form, FormField, TextInput } from 'grommet';
 import { FormView, FormViewHide } from 'grommet-icons';
 import {
     AuthProvider,
     GoogleAuthProvider,
-    OAuthProvider,
+    TwitterAuthProvider,
     createUserWithEmailAndPassword,
     sendPasswordResetEmail,
     signInWithEmailAndPassword,
@@ -23,19 +23,17 @@ import {
     LoginContainer,
     Notice,
     SocialButtons,
-    StyledFormField,
     SubmitButton,
     TextLink,
 } from './index.styles';
-import { AppleIcon, GoogleIcon } from './icons';
+import { GoogleIcon, XIcon } from './icons';
 import { getAuthErrorMessage } from '../../utils/authErrors';
 
 type Mode = 'signIn' | 'signUp';
 
 // Each must also be enabled in the Firebase console under Authentication ->
 // Sign-in method; a provider listed here but not enabled there fails with
-// auth/operation-not-allowed, which is reported below. Apple has no dedicated
-// provider class -- it goes through the generic OAuth provider.
+// auth/operation-not-allowed, which is reported below.
 type SocialProvider = {
     id: string;
     label: string;
@@ -52,17 +50,12 @@ const SocialProviders: SocialProvider[] = [
         create: () => new GoogleAuthProvider(),
     },
     {
-        id: 'apple',
-        label: 'Continue with Apple',
+        id: 'twitter',
+        label: 'Continue with X',
         dark: true,
-        icon: AppleIcon,
-        create: () => {
-            const provider = new OAuthProvider('apple.com');
-            // Apple only returns these on the very first authorisation.
-            provider.addScope('email');
-            provider.addScope('name');
-            return provider;
-        },
+        icon: XIcon,
+        // Firebase's provider id is still 'twitter.com'.
+        create: () => new TwitterAuthProvider(),
     },
 ];
 
@@ -159,18 +152,18 @@ const SignInScreen = () => {
 
             <Form onSubmit={submit}>
                 {mode === 'signUp' ? (
-                    <StyledFormField name='name' htmlFor='login_name' label='Name'>
+                    <FormField name='name' htmlFor='login_name' label='Name'>
                         <TextInput
                             id='login_name'
                             name='name'
-                            placeholder='How your name appears in the standings'
+                            placeholder='Display Name'
                             value={name}
                             onChange={(event) => setName(event.target.value)}
                         />
-                    </StyledFormField>
+                    </FormField>
                 ) : null}
 
-                <StyledFormField name='email' htmlFor='login_email' label='Email' error={emailError}>
+                <FormField name='email' htmlFor='login_email' label='Email' error={emailError}>
                     <TextInput
                         id='login_email'
                         name='email'
@@ -178,11 +171,17 @@ const SignInScreen = () => {
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                     />
-                </StyledFormField>
+                </FormField>
 
-                <StyledFormField name='password' htmlFor='login_password' label='Password'>
+                <FormField name='password' htmlFor='login_password' label='Password'>
                     <PasswordField>
+                        {/* FormField auto-sets plain + focusIndicator on a
+                            direct grommet input child, but this one is nested
+                            in PasswordField so it never matches. Without these
+                            the input draws its own border inside the field's. */}
                         <TextInput
+                            plain
+                            focusIndicator={false}
                             id='login_password'
                             name='password'
                             type={showPassword ? 'text' : 'password'}
@@ -198,10 +197,10 @@ const SignInScreen = () => {
                             aria-label={showPassword ? 'Hide password' : 'Show password'}
                             aria-pressed={showPassword}
                         >
-                            {showPassword ? <FormViewHide /> : <FormView />}
+                            {showPassword ? <FormViewHide color='currentColor' /> : <FormView color='currentColor' />}
                         </PasswordToggle>
                     </PasswordField>
-                </StyledFormField>
+                </FormField>
 
                 <SubmitButton
                     primary

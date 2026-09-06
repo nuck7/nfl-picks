@@ -6,6 +6,9 @@ const PasswordProviderId = 'password';
 // The providers the sign-in screen offers, named the way a person would.
 const ProviderLabels: Record<string, string> = {
   'google.com': 'Google',
+  // Firebase's id for X. Apple stays mapped so anyone who signed up with it
+  // before still gets a name rather than a raw provider id.
+  'twitter.com': 'X',
   'apple.com': 'Apple',
 };
 
@@ -24,7 +27,7 @@ export const isAuthenticated = () => {
 };
 
 // An account can have more than one provider linked. Having a password is what
-// makes the email ours to change: an email that came from Google or Apple is
+// makes the email ours to change: an email that came from Google or X is
 // theirs, and changing it here would only be undone at the next sign-in.
 export const hasPasswordSignIn = (user: User | null = auth.currentUser) =>
   !!user?.providerData.some((provider) => provider.providerId === PasswordProviderId);

@@ -9,7 +9,10 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.js',
-    publicPath: '/'
+    publicPath: '/',
+    // dist is also firebase.json's `public` dir and was never cleaned, so
+    // every content-hashed font ever built would accumulate and deploy.
+    clean: true
   },
   devServer: {
     static: {
@@ -30,6 +33,11 @@ module.exports = {
       {
         test: /\.css$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader'],
+      },
+      {
+        test: /\.woff2?$/i,
+        type: 'asset/resource',
+        generator: { filename: 'fonts/[name].[contenthash][ext]' },
       },
     ]
   },

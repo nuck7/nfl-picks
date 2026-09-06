@@ -4,9 +4,11 @@ import { CurrentWeek, DropdownOption, Game, TeamsKeyed } from '../../types';
 import { CurrentWeekContext, TeamsContext } from '../../App';
 import { getWeekMatchups } from '../../resources/espn';
 import { getMatchupId } from '../../utils/teams';
+import { isFinal, isInProgress } from '../../utils/grading';
 import { formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
 import MatchupHeading from '../MatchupHeading';
-import DateSection, { GameTime, MatchupRow } from '../DateSection';
+import DateSection, { MatchupRow } from '../DateSection';
+import { LiveTag } from '../MatchupHeading/index.styles';
 import { EmptyMessage, MatchupList, WeekSelectContainer } from './index.styles';
 
 const Schedule = () => {
@@ -73,9 +75,9 @@ const Schedule = () => {
 
     return (
         <div>
-            <h1>
-                {selectedWeek ? selectedWeek.label : 'Schedule'}
-            </h1>
+            {/* The week the page is showing is named by the select directly
+                below, so the heading names the page instead of repeating it. */}
+            <h1>Schedule</h1>
             <WeekSelectContainer>
                 <Select
                     id='schedule_week'
@@ -97,8 +99,21 @@ const Schedule = () => {
                         <DateSection key={section.key} date={section.date}>
                             {section.matchups.map((matchup) => (
                                 <MatchupRow key={getMatchupId(matchup)}>
-                                    <MatchupHeading alignSeparator teams={teams} game={matchup} />
-                                    <GameTime>{formatGameTime(matchup.date)}</GameTime>
+                                    {/* showResult gives a finished game 70% of
+                                        the band to the winner's colour, marks
+                                        it, and desaturates the loser. */}
+                                    <MatchupHeading
+                                        size='medium'
+                                        tone='band'
+                                        showResult
+                                        teams={teams}
+                                        game={matchup}
+                                        meta={
+                                            isFinal(matchup) ? 'FINAL'
+                                                : isInProgress(matchup) ? <LiveTag>LIVE</LiveTag>
+                                                : formatGameTime(matchup.date)
+                                        }
+                                    />
                                 </MatchupRow>
                             ))}
                         </DateSection>

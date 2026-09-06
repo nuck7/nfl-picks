@@ -1,49 +1,43 @@
-import { Button, FormField } from "grommet";
+import { Button } from "grommet";
 import styled from "styled-components";
-import { color } from "../../theme";
+import { border, color, layout, radius, space, typeStyle } from "../../theme";
 
 export const LoginContainer = styled.div`
     display: flex;
     flex-direction: column;
-    max-width: 360px;
+    max-width: ${layout.formWidth};
     margin: 0 auto;
-    padding: 24px 0;
-`
-
-export const StyledFormField = styled(FormField)`
-    margin-bottom: 16px;
+    padding: ${space[6]} 0;
 `
 
 export const SubmitButton = styled(Button)`
-    margin-top: 8px;
+    margin-top: ${space[2]};
 `
 
 export const SocialButtons = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 24px;
+    gap: ${space[2]};
+    margin-bottom: ${space[6]};
 `
 
 // Each provider requires its own mark and colours, so these are plain buttons
-// rather than grommet's -- 40px tall, matching the height of the form inputs
-// below rather than towering over them.
+// rather than grommet's. Padding rather than a fixed height, so they track the
+// form inputs below instead of drifting whenever the input scale changes.
 export const SocialButton = styled.button<{ $dark?: boolean }>`
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: ${space[2]};
     width: 100%;
-    height: 40px;
-    padding: 0 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 13px ${space[4]};
+    border-radius: ${radius.lg};
+    ${typeStyle('label')}
     font-family: inherit;
     cursor: pointer;
-    border: 1px solid ${(props) => (props.$dark ? '#000000' : '#dadce0')};
-    background: ${(props) => (props.$dark ? '#000000' : '#ffffff')};
-    color: ${(props) => (props.$dark ? '#ffffff' : '#3c4043')};
+    border: 1px solid ${(props) => (props.$dark ? color.ink : color.border)};
+    background: ${(props) => (props.$dark ? color.ink : color.surface)};
+    color: ${(props) => (props.$dark ? color.inkInverse : color.ink)};
 
     &:hover:not(:disabled) {
         opacity: 0.85;
@@ -58,44 +52,46 @@ export const SocialButton = styled.button<{ $dark?: boolean }>`
 export const Divider = styled.div`
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: #666666;
-    margin-bottom: 24px;
+    gap: ${space[3]};
+    color: ${color.inkMuted};
+    margin-bottom: ${space[6]};
+    ${typeStyle('meta')}
 
     &:before,
     &:after {
         content: '';
         flex: 1;
-        border-top: 1px solid #dddddd;
+        border-top: ${border.hairline};
     }
 `
 
 export const ErrorMessage = styled.div`
-    color: ${color.red};
-    margin-bottom: 16px;
+    color: ${color.negative};
+    margin-bottom: ${space[4]};
 `
 
 export const Notice = styled.div`
-    color: #666666;
-    margin-bottom: 16px;
+    color: ${color.inkMuted};
+    margin-bottom: ${space[4]};
 `
 
 export const TextLink = styled.button`
     background: none;
     border: none;
     padding: 0;
-    color: ${color.blue};
+    color: ${color.accent};
     cursor: pointer;
     text-decoration: underline;
-    font-size: 14px;
+    text-underline-offset: 2px;
+    ${typeStyle('meta')}
 `
 
 export const Actions = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 16px;
-    gap: 16px;
+    margin-top: ${space[4]};
+    gap: ${space[4]};
 `
 
 // grommet's TextInput has no suffix slot, so the toggle is overlaid on the
@@ -112,7 +108,7 @@ export const PasswordField = styled.div`
 export const PasswordToggle = styled.button`
     position: absolute;
     top: 50%;
-    right: 8px;
+    right: 0;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
@@ -123,9 +119,9 @@ export const PasswordToggle = styled.button`
     border: none;
     background: none;
     cursor: pointer;
-    color: #666666;
+    color: ${color.inkMuted};
 
     &:hover {
-        color: #000000;
+        color: ${color.ink};
     }
 `

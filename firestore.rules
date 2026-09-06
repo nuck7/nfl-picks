@@ -64,8 +64,58 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Whether a week's picks have locked, from its lock time in epoch millis:
+    // the admin's override when one is set,
+    // otherwise the default the season seed derived from the schedule. Both are
+    // stored as numbers purely for this function -- the app writes ISO strings
+    // beside them, and rules have no timestamp.parse() to read those with.
+    //
+    // A week with no document at all, or one the seed has never run for, is not
+    // locked. That is deliberate: an unknown deadline must hide picks, not expose
+    // them. Run "Store season data" once to give every week a default.
+    // Deliberately ONE get(). Rules allow only ten document accesses per request,
+    // and a list is charged per document it evaluates, so a fetch per field here
+    // would put a full week of players over the limit -- and a week that goes
+    // over is refused, which is indistinguishable from a real denial. The
+    // fetched document is handed to the helpers (get() returns null when it is
+    // missing) rather than re-read for each field.
+    function weekIsLocked(weekId) {
+      return isLocked(get(/databases/$(database)/documents/weeks/$(weekId)));
+    }
+
+    function isLocked(week) {
+      return week != null
+        && lockMs(week.data) > 0
+        && request.time.toMillis() >= lockMs(week.data);
+    }
+
+    // The override wins; the seeded default is the fallback; a week carrying
+    // neither is 0, which isLocked reads as "not locked yet".
+    function lockMs(week) {
+      return 'lockAtMs' in week
+        ? week.lockAtMs
+        : ('defaultLockAtMs' in week ? week.defaultLockAtMs : 0);
+    }
+
     match /picks/{pickId} {
-      allow read: if isSignedIn();
+      // You can always read your own, and an admin reads everyone's. Anyone
+      // else's stays hidden to a member until that week's picks lock -- seeing
+      // the pool's picks before the deadline is the whole cheating vector, so it
+      // is a rule here rather than something the standings page merely declines
+      // to draw.
+      //
+      // Rules are evaluated per document on a list as well as a get, so a
+      // member's unconstrained query of the week is refused whole before the
+      // lock rather than quietly filtered. Standings therefore asks a narrower
+      // question until then -- see getPicksForWeek in resources/firebase.ts.
+      //
+      // week_id must be a string: it is interpolated into a document path below,
+      // and older documents wrote it as a number.
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.user_id == request.auth.uid)
+        || (isSignedIn()
+            && resource.data.week_id is string
+            && weekIsLocked(resource.data.week_id));
 
       // Admins submit on behalf of players who have no account of their own, so
       // the owner is not required to be the signed-in user.
@@ -86,6 +136,76 @@ service cloud.firestore {
     match /seasons/{seasonId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // What each player paid into the pool for a week, and how. One document per
+    // player per week, id "{weekId}_{playerId}" -- see resources/payments.ts for
+    // why it is not one map per week.
+    //
+    // The method list is duplicated from PaymentMethodOptions in constants.ts;
+    // adding a way to pay means adding it in both places.
+    function isPaymentDoc() {
+      return request.resource.data.keys().hasOnly(['weekId', 'playerId', 'method'])
+        && request.resource.data.weekId is string
+        && request.resource.data.playerId is string
+        && request.resource.data.method in ['zelle', 'venmo', 'applepay', 'cash'];
+    }
+
+    match /payments/{paymentId} {
+      // A member reads only their own row. Rules are evaluated per document on a
+      // list as well as a get, so a query not constrained to their own playerId
+      // is refused whole rather than quietly filtered -- nobody else's payment
+      // leaks. Admins read the lot, which is what the admin table and the
+      // standings badges need.
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.playerId == request.auth.uid);
+
+      allow create, update: if isAdmin() && isPaymentDoc();
+
+      // Unpaid is the absence of a record, so marking someone unpaid is a delete.
+      allow delete: if isAdmin();
+    }
+
+    // The stored copy of ESPN's season: the week list, the teams, and one
+    // document per week of games. Everyone reads it; only an admin writes it,
+    // from the seed button on the admin page.
+    //
+    // Admin-only is deliberate. The standings grade picks against the `winner`
+    // flag in these documents, so a member who could write here could change
+    // who won -- and rules cannot cheaply validate a 16-element array of maps,
+    // so the contents can't be checked. Members losing write access costs
+    // nothing: the app falls back to ESPN, which is a single request.
+    function isCacheDocId(docId) {
+      return docId.matches('^(season_[0-9]{4}|teams_[0-9]{4}|matchups_[0-9]{4}_week_[0-9]{1,2})$');
+    }
+
+    // The envelope, which is all rules can meaningfully check. fetchedAt must
+    // be the server's own clock, so an entry cannot be backdated or postdated.
+    function isCacheEnvelope() {
+      return request.resource.data.keys().hasAll(['schemaVersion', 'fetchedAt', 'season'])
+        && request.resource.data.keys().size() <= 8
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.fetchedAt == request.time
+        && request.resource.data.season is int;
+    }
+
+    match /cache/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isCacheDocId(docId) && isCacheEnvelope();
+    }
+
+    // Superseded collections. Nothing reads or writes these any more; the
+    // explicit deny stops a future wildcard match from re-opening them.
+    match /users/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /matchups/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /teams/{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -144,6 +144,9 @@ export type Team = {
   displayName: string;
   abbreviation: string;
   color?: string;
+  // Used when two teams' primaries are too close to tell apart in a matchup
+  // band -- DAL, NE and SEA are all #002a5c, LV and PIT are both #000000.
+  alternateColor?: string;
   logo?: string;
 };
 
@@ -182,12 +185,52 @@ export type Game = {
 // so the week falls back to the default deadline computed from kickoffs.
 export type WeekSettings = {
   weekId: string;
-  lockAt: string;
+  // The admin's override, absent until one is set. ISO because that is the one
+  // shape the datetime-local input, the deadline comparison and the document
+  // all agree on.
+  lockAt?: string;
+  // The same moment in epoch millis. Firestore rules cannot parse an ISO string
+  // into a timestamp -- there is no timestamp.parse() -- so this number is what
+  // gates a member's read of anyone else's picks, and the string above is what
+  // the UI speaks. Written and cleared together with lockAt.
+  lockAtMs?: number;
+  // The deadline derived from the schedule (noon on the day of the week's first
+  // game), written for every week by the season seed so the rules always have a
+  // lock time to compare against. The override wins when present.
+  defaultLockAt?: string;
+  defaultLockAtMs?: number;
+  // Who won the week, as a player id. The app works out who it should be from
+  // the picks and the results, but nothing is stored until an admin confirms it
+  // on the Results tab -- and they can name someone else instead, which is what
+  // makes this an override rather than a cache of the calculation. Absent means
+  // nobody has confirmed a winner yet, not that the week was a draw.
+  winnerPlayerId?: string;
 };
 
 export type SeasonWeek = {
   season: number;
   week: number;
+};
+
+export type PaymentMethod = 'zelle' | 'venmo' | 'applepay' | 'cash';
+
+// One player's payment for one week. No amount by design: the buy-in is fixed
+// and everybody knows it, so the only thing worth recording is how it arrived.
+// Unpaid is the absence of a document rather than a false flag, which is what
+// keeps "who still owes" a single question about existence.
+export type WeekPayment = {
+  // makeWeekId(season, week), the same id picks are stored under.
+  weekId: string;
+  // The player's id -- their auth uid, or the auto-id of a managed player.
+  playerId: string;
+  method: PaymentMethod;
+};
+
+// The dropdown's option shape. Distinct from DropdownOption below, whose value
+// is a number.
+export type PaymentMethodOption = {
+  label: string;
+  value: PaymentMethod;
 };
 
 // The week the app is on, resolved once at startup and shared. Every page that
@@ -229,24 +272,28 @@ export type DropdownOption = {
   value: number;
 };
 
-// The team shape embedded in a pick document. Distinct from Team: these are
-// written into Firestore and must stay readable for documents already saved.
+// The team shape embedded in a pick document. Distinct from Team: this is what
+// gets written into Firestore, so it carries the name rather than looking it up.
 export type PickTeam = {
-  id: number | string;
+  // ESPN team id, as a string -- the same form GameTeam.id takes, so a pick and
+  // a game side compare directly with no coercion.
+  id: string;
   name: string;
-  city?: string;
 };
 
 export type Pick = {
+  // ESPN competition id. Slots are built from the week's matchups, so every
+  // pick belongs to a game.
+  matchupId: string;
   awayTeam: PickTeam;
   homeTeam: PickTeam;
-  pickedTeam: PickTeam;
-  // ESPN competition id. Optional: documents written before it existed have none.
-  matchupId?: string;
+  // Absent until a team is chosen.
+  pickedTeam?: PickTeam;
 };
 
 export type PicksForm = {
-  user_name?: string | null;
+  user_name: string;
+  // The document's own id, when it has one. Not part of the stored data.
   key?: string;
   picks: Pick[];
   user_id: string;
@@ -255,8 +302,81 @@ export type PicksForm = {
   tieBreakerPoints: number | '';
 };
 
-export type PickKeyed = {
+// How one pick turned out. 'push' covers both a tie and a final ESPN hasn't
+// flagged a winner on: neither should mark anybody wrong. 'pending' is distinct
+// from 'incorrect' so an ungraded game never reads as a miss.
+/* -------------------------------------------------------------------------
+ * The Firestore copy of the ESPN data, under the `cache` collection.
+ *
+ * One document per payload rather than one per game: every consumer wants a
+ * whole week at once, so per-game documents would turn each page into 16 reads.
+ * A trimmed week is ~4KB and all 32 teams ~6.5KB, nowhere near the 1MB limit.
+ * ---------------------------------------------------------------------- */
+
+export type CachedSeasonWeek = {
+  week: number;
+  label: string;
+  // ESPN's calendar window for the week -- administrative boundaries, midnight
+  // to 11:59pm, not games.
+  start: string;
+  end: string;
+  // First and last kickoff, ISO. Empty when ESPN has no games for the week yet.
+  // Note lastKickoff is when the final game STARTS, not when it ends.
+  firstKickoff: string;
+  lastKickoff: string;
+  gameCount: number;
+};
+
+// Written by an admin, so `fetchedAt` is a server timestamp on the way in and a
+// Timestamp on the way back out.
+export type CachedSeason = {
+  schemaVersion: number;
+  fetchedAt: Timestamp;
+  season: number;
+  start: string;
+  end: string;
+  weeks: CachedSeasonWeek[];
+};
+
+export type CachedTeams = {
+  schemaVersion: number;
+  fetchedAt: Timestamp;
+  season: number;
+  teams: Team[];
+};
+
+export type CachedWeekGames = {
+  schemaVersion: number;
+  fetchedAt: Timestamp;
+  season: number;
+  week: number;
+  weekId: string;
+  games: Game[];
+};
+
+// What a seed run wrote, for reporting back on the admin page.
+export type SeedSummary = {
+  season: number;
+  weeks: number;
+  games: number;
+  teams: number;
+};
+
+export type Outcome = 'correct' | 'incorrect' | 'push' | 'pending' | 'none';
+
+// One participant's pick for one matchup, resolved when the row is built rather
+// than looked up again on every render of the cell.
+export type StandingsPickCell = {
+  logo?: string;
+  name?: string;
+  // The picked team's ESPN primary, still without its leading '#'.
+  color?: string;
+  outcome: Outcome;
+};
+
+export type StandingsRow = {
+  matchupId: string;
   matchupName: string;
-  // undefined means the participant has no pick for that matchup
-  [key: string]: string | undefined;
+  // Keyed by user_id, matching that participant's column property.
+  picks: Record<string, StandingsPickCell>;
 };

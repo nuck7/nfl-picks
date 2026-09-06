@@ -16,4 +16,4 @@ const DateSection: React.FC<Props> = ({ date, children }) => (
 )
 
 export default DateSection
-export { GameTime, MatchupRow } from './index.styles';
+export { MatchupRow } from './index.styles';

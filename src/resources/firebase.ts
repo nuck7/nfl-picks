@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 
 import { PicksForm, Player } from '../types';
+import { toPicksDocument } from '../utils/picks';
 import { db } from './firebase.config';
 
 export const getDocuments = async (
@@ -39,6 +40,32 @@ export const getPicks = async (weekId: string): Promise<PicksForm[]> => {
   });
 
   return picks;
+};
+
+// What the standings may ask for. Before the week locks the rules refuse a
+// member anyone else's picks -- and refuse the whole query rather than filtering
+// the rows they may not have -- so this asks a narrower question instead of
+// fetching everything and filtering the answer. Filtering client-side would both
+// fail the read and leave the picks in the response.
+export const getPicksForWeek = async (
+  weekId: string,
+  viewer: { playerId?: string; canSeeEveryone: boolean }
+): Promise<PicksForm[]> => {
+  if (!weekId) {
+    return [];
+  }
+
+  if (viewer.canSeeEveryone) {
+    return getPicks(weekId);
+  }
+
+  if (!viewer.playerId) {
+    return [];
+  }
+
+  const mine = await getPicksForPlayer(weekId, viewer.playerId);
+
+  return mine ? [mine] : [];
 };
 
 // Takes the player explicitly rather than reading auth.currentUser, so an admin
@@ -69,14 +96,16 @@ export const getPicksForPlayer = async (
 // The player these picks belong to is passed in, not derived from the session:
 // an admin submitting on someone's behalf is saving under their id, not their own.
 export const savePicks = async (picks: PicksForm, player: Player) => {
-  picks.user_name = player.name;
-  picks.user_id = player.id;
+  const document = toPicksDocument(picks, player);
+
+  // `key` is the document's own id, not part of its data, so it is deliberately
+  // not in the payload above.
   if (picks.key) {
-    await setDoc(doc(db, 'picks', picks.key), picks);
+    await setDoc(doc(db, 'picks', picks.key), document);
     return picks.key;
   }
 
   // First submission for this user/week: no document exists yet.
-  const created = await addDoc(collection(db, 'picks'), picks);
+  const created = await addDoc(collection(db, 'picks'), document);
   return created.id;
 };

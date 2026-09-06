@@ -159,12 +159,30 @@ export const useCurrentPlayer = (): CurrentUser => {
           return;
         }
 
+        // The upsert is async and a sign-out can land while it is still in
+        // flight. Without this check its result -- or its failure fallback --
+        // arrives after setUser(undefined) and resurrects a signed-out user:
+        // the app then renders the whole signed-in shell to nobody, with an
+        // empty page, because Firestore rightly refuses every read.
+        const isStale = () => auth.currentUser?.uid !== firebaseUser.uid;
+
         try {
-          setUser(await upsertCurrentPlayer(firebaseUser));
+          const player = await upsertCurrentPlayer(firebaseUser);
+
+          if (isStale()) {
+            return;
+          }
+
+          setUser(player);
         } catch (error) {
           // Firestore can be unreachable (denied rules, offline). Fall back to
           // the auth details so a seed admin still gets in.
           console.error(error);
+
+          if (isStale()) {
+            return;
+          }
+
           setUser({
             id: firebaseUser.uid,
             name: resolvePlayerName(firebaseUser),
@@ -173,7 +191,11 @@ export const useCurrentPlayer = (): CurrentUser => {
             managed: false,
           });
         } finally {
-          setLoading(false);
+          // A stale callback must not clear the loading flag either; the
+          // sign-out path has already done that.
+          if (!isStale()) {
+            setLoading(false);
+          }
         }
       }),
     []

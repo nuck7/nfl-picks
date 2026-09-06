@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Avatar, Button } from 'grommet';
+import { Avatar } from 'grommet';
 import { Menu } from 'grommet-icons';
+import { useLocation } from 'react-router-dom';
 import { MenuButton, NavLink, NavLinks, ProfileButton, StyledNav } from './index.styles';
-import { color } from '../../theme';
 import { auth } from '../../resources/firebase.config';
 import { AppMenuOptions, DefaultAvatarImage } from '../../constants';
 import { CurrentUser, MenuOption } from '../../types';
@@ -19,6 +19,7 @@ interface Props {
 const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setProfileMenu}) => {
     const { user, isAdmin } = useContext<CurrentUser>(CurrentUserContext)
     const [avatarImage, setAvatarImage] = useState<string>(DefaultAvatarImage)
+    const { pathname } = useLocation()
 
     // Keyed on the player rather than auth.currentUser, which is a mutable object
     // React can't compare -- the old effect only re-ran by coincidence. Resets to
@@ -33,23 +34,28 @@ const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setPr
         <StyledNav direction="row" gap="none" pad={{ horizontal: 'medium', vertical: 'xsmall' }}>
             {user ? (
                 <MenuButton
-                    primary
+                    a11yTitle='Open menu'
+                    aria-expanded={openSideBar}
                     onClick={() => setSideBar(!openSideBar)}
-                    color={color.black}
-                    icon={<Menu color={color.white} />}
+                    icon={<Menu />}
                 />
             ) : null}
             <NavLinks>
                 {(user ? getVisibleMenuOptions(AppMenuOptions, isAdmin) : []).map((option: MenuOption) => (
-                    <NavLink key={option.label} href={option.link} plain>
+                    <NavLink
+                        key={option.label}
+                        to={option.link}
+                        plain
+                        aria-current={pathname === option.link ? 'page' : undefined}
+                    >
                         {option.label}
                     </NavLink>
                 ))}
             </NavLinks>
             <ProfileButton
-                primary
+                a11yTitle='Open profile menu'
+                aria-expanded={openProfileMenu}
                 onClick={() => setProfileMenu(!openProfileMenu)}
-                color={color.black}
                 icon={<Avatar size="small" src={avatarImage} />}
             />
         </StyledNav>

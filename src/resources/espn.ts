@@ -99,6 +99,7 @@ export const toTeam = (team: EspnSiteTeam): Team => ({
   displayName: team.displayName,
   abbreviation: team.abbreviation,
   color: team.color,
+  alternateColor: team.alternateColor,
   logo: team.logo,
 });
 

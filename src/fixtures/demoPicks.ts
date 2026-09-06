@@ -1,5 +1,5 @@
-import { Game, PicksForm, TeamsKeyed } from '../types';
-import { getMatchupId, getTeamByHomeAway } from '../utils/teams';
+import { Game, Pick, PicksForm } from '../types';
+import { createEmptyPick } from '../utils/picks';
 
 // Demo participants are appended to the real picks when the page is loaded with
 // ?demo=1, so the standings grid can be seen without waiting on real submissions.
@@ -14,31 +14,19 @@ const DemoParticipants = [
   { user_id: 'demo-5', user_name: 'Demo Pat' },
 ];
 
-export const makeDemoPicks = (
-  matchups: Game[],
-  teams: TeamsKeyed,
-  weekId: string
-): PicksForm[] => {
+export const makeDemoPicks = (matchups: Game[], weekId: string): PicksForm[] => {
   return DemoParticipants.map((participant, participantIndex) => {
-    const picks = matchups.map((matchup, matchupIndex) => {
-      const homeTeam = getTeamByHomeAway(teams, matchup, 'home');
-      const awayTeam = getTeamByHomeAway(teams, matchup, 'away');
-
-      const home = { id: homeTeam?.id ?? 0, name: homeTeam?.displayName ?? '' };
-      const away = { id: awayTeam?.id ?? 0, name: awayTeam?.displayName ?? '' };
+    const picks: Pick[] = matchups.map((matchup, matchupIndex) => {
+      const slot = createEmptyPick(matchup);
 
       // Deterministic so the grid doesn't reshuffle between renders.
       // Every third slot is left unpicked to exercise the empty-cell rendering.
       const choice = (participantIndex + matchupIndex) % 3;
-      const pickedTeam =
-        choice === 0 ? home : choice === 1 ? away : { id: 0, name: '' };
+      if (choice === 2) {
+        return slot;
+      }
 
-      return {
-        matchupId: getMatchupId(matchup),
-        homeTeam: home,
-        awayTeam: away,
-        pickedTeam,
-      };
+      return { ...slot, pickedTeam: choice === 0 ? slot.homeTeam : slot.awayTeam };
     });
 
     return {

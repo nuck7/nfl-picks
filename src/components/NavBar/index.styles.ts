@@ -1,6 +1,7 @@
 import { Button, Nav } from 'grommet';
 import styled from 'styled-components';
-import { breakpoint, color } from '../../theme';
+import { breakpoint, color, layout, motion, radius, space, typeStyle } from '../../theme';
+import LinkButton from '../LinkButton';
 
 // Three columns so the links sit in the true centre of the bar regardless of
 // how wide the hamburger and avatar either side of them are. Nav is given
@@ -10,13 +11,48 @@ export const StyledNav = styled(Nav)`
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    background: ${color.black};
+    min-height: ${layout.navHeight};
+    /* The one dark surface in the system. No hairline under it: a bar this dark
+       separates itself from the ground, and a border would read as a seam. */
+    background: ${color.ink};
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    /* GlobalStyle's focus ring is the navy accent, which all but vanishes on
+       near-black. Scoped here so the rest of the app keeps the accent ring. */
+    :focus-visible {
+        outline-color: ${color.inkInverse};
+    }
+`
+
+const iconButton = `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: ${radius.circle};
+
+    /* grommet-icons paints fill and stroke explicitly from its own theme, which
+       resolves to near-black -- invisible on this bar. Nothing but currentColor
+       makes the icon follow the button's colour. */
+    svg {
+        fill: currentColor;
+        stroke: currentColor;
+    }
 `
 
 export const MenuButton = styled(Button)`
+    ${iconButton}
     grid-column: 1;
     justify-self: start;
-    padding: 4px;
+    color: ${color.inkInverse};
+
+    &:hover { background: ${color.surfaceInverseHover}; }
 
     @media (min-width: ${breakpoint.mobile}) {
         display: none;
@@ -32,25 +68,39 @@ export const NavLinks = styled.div`
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 8px;
+        gap: ${space[1]};
     }
 `
 
-export const NavLink = styled(Button)`
-    color: ${color.white};
-    font-size: 16px;
-    line-height: 1;
+export const NavLink = styled(LinkButton)`
+    ${typeStyle('meta')}
+    color: ${color.inkInverseMuted};
+    text-decoration: none;
     white-space: nowrap;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: ${space[2]} ${space[3]};
+    border: none;
+    border-radius: ${radius.pill};
+    background: transparent;
+    transition: color ${motion.fast} ${motion.ease},
+                background-color ${motion.fast} ${motion.ease};
 
     &:hover {
-        text-decoration: underline;
+        color: ${color.inkInverse};
+        background: ${color.surfaceInverseHover};
+    }
+
+    /* Deliberately not a weight change: 400 -> 500 on the active item would
+       reflow every other link in the bar as you navigate. */
+    &[aria-current='page'] {
+        color: ${color.inkInverse};
+        background: ${color.surfaceInverseActive};
     }
 `
 
 export const ProfileButton = styled(Button)`
+    ${iconButton}
     grid-column: 3;
     justify-self: end;
-    padding: 4px;
+
+    &:hover { background: ${color.surfaceInverseHover}; }
 `
