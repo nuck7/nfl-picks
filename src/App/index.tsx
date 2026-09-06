@@ -12,6 +12,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute'
 import ProfileMenu from '../components/ProfileMenu'
 import AppMenu from '../components/AppMenu'
 import { Main, Shell, Surface } from './index.styles'
+import Footer from '../components/Footer'
 import { grommetTheme } from '../grommetTheme'
 import { GlobalStyle } from '../GlobalStyle'
 import Standings from '../components/Standings'
@@ -75,7 +76,7 @@ const App = () => {
 
     // Nav links used to be plain hrefs, so a full page load dismissed whichever
     // drawer was open. Client-side routing keeps them mounted, so close them on
-    // every completed navigation. SideBar also calls closeMenus on click, which
+    // every completed navigation. The menus also call closeMenus on click, which
     // covers tapping the link you are already on.
     useEffect(() => {
         closeMenus()
@@ -199,7 +200,12 @@ const App = () => {
                             setProfileMenu={setShowProfileMenu}
                         />
 
-                        <Main>
+                        {/* The standings is the one page whose width is set by
+                            how many people are in the pool rather than by
+                            reading comfort, so it alone opts out of the prose
+                            cap. Both standings routes: the print sheet is the
+                            same grid in a different costume. */}
+                        <Main $wide={location.pathname.startsWith('/standings')}>
                             <Surface>
                                 <Routes>
                                     <Route path='login' element={<Login />} />
@@ -230,6 +236,8 @@ const App = () => {
                                 </Routes>
                             </Surface>
                         </Main>
+
+                        <Footer />
 
                         {showSideBar && currentUser.user ? (
                             <AppMenu onClose={closeMenus} />

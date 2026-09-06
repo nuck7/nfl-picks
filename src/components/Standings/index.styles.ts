@@ -15,15 +15,24 @@ const tintFor = (outcome: Outcome, fill: string) =>
         : outcome === 'incorrect' ? withAlpha(fill, 0.14)
         : withAlpha(fill, 0.40)
 
+// Every pick cell is the same size whatever its column ends up being. A column
+// is sized by the player's name in the header, so at width:100% a "Nick W Chu"
+// column drew visibly wider tiles than a "Nick Chu" one -- the logos were
+// always 48px, but the tiles around them were not, and the grid read as if the
+// icons themselves were different sizes. Centred in whatever room the name
+// leaves, so the extra width becomes gutter rather than tile.
+const TileWidth = '64px'
+
 export const PickTile = styled.div<{ $background: string; $ink: string; $outcome: Outcome }>`
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    min-height: 64px;
+    width: ${TileWidth};
+    margin: 0 auto;
+    min-height: 48px;
     box-sizing: border-box;
-    padding: ${space[2]};
+    padding: ${space[1]};
     border-radius: ${radius.md};
     background: ${({ $background, $outcome }) => tintFor($outcome, $background)};
     /* Only the correct tile is a full-strength colour, so it is the only one
@@ -37,8 +46,8 @@ export const PickTile = styled.div<{ $background: string; $ink: string; $outcome
 `
 
 export const PickLogo = styled.img<{ $outcome: Outcome }>`
-    height: 48px;
-    width: 48px;
+    height: 36px;
+    width: 36px;
     object-fit: contain;
 
     /* The chip is only needed where the tile is a full-strength team colour --
@@ -63,8 +72,8 @@ export const OutcomeBadge = styled.span<{ $outcome: Outcome }>`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 18px;
-    width: 18px;
+    height: 15px;
+    width: 15px;
     border-radius: ${radius.circle};
     background: ${({ $outcome }) => ($outcome === 'correct' ? color.positive : color.inkFaint)};
     color: ${Paper};
@@ -74,7 +83,11 @@ export const NoPick = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 64px;
+    /* Matches PickTile so an empty cell holds the same column rhythm as a
+       filled one. */
+    width: ${TileWidth};
+    margin: 0 auto;
+    min-height: 48px;
     color: ${color.inkFaint};
 `
 
@@ -100,6 +113,15 @@ export const PlayerHeader = styled.div`
     flex-direction: column;
     align-items: center;
     gap: ${space[1]};
+    /* The tile is only 64px, but a column is as wide as its widest cell -- and
+       on a one-line header that is the name, so "Christopher Vandenberg" was
+       setting a 150px column and undoing the tile shrink. Capping and wrapping
+       the name is what actually buys the width back for the matchup column. */
+    max-width: 76px;
+    ${typeStyle('meta')}
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
 `
 
 // Admins only, so it can afford to name the method rather than just say paid.

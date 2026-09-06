@@ -111,7 +111,11 @@ export const media = {
 
 /* -------------------------------------------------------------- layout -- */
 export const layout = {
-    maxWidth: '1100px',   // wide pages: standings table, schedule
+    maxWidth: '1100px',   // most pages: schedule, admin, prose
+    // The standings only. One column per player plus the matchup column runs
+    // past 1100px well before a full pool of fifteen, and the cap was spending
+    // the space on margin while the table scrolled inside it.
+    wideWidth: '1560px',
     readWidth: '620px',   // prose: admin intro, profile
     formWidth: '400px',   // login
     navHeight: '60px',

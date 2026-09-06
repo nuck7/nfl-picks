@@ -13,10 +13,10 @@ export const Shell = styled.div`
     background: ${color.ground};
 `
 
-export const Main = styled.main`
+export const Main = styled.main<{ $wide?: boolean }>`
     flex: 1 1 auto;
     width: 100%;
-    max-width: ${layout.maxWidth};
+    max-width: ${({ $wide }) => ($wide ? layout.wideWidth : layout.maxWidth)};
     margin: 0 auto;
     padding: ${space[10]} ${layout.gutter} ${space[16]};
 

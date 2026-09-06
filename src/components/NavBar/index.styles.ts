@@ -46,10 +46,31 @@ const iconButton = `
     }
 `
 
-export const MenuButton = styled(Button)`
-    ${iconButton}
+// The bar's first grid cell. On a phone it carries the hamburger and the
+// wordmark side by side; above the breakpoint the hamburger hides itself and the
+// wordmark is left alone at the start of the bar.
+export const NavStart = styled.div`
     grid-column: 1;
     justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: ${space[2]};
+    min-width: 0;
+`
+
+// Deliberately the same treatment as the drawer's heading -- uppercase at the
+// caption step with wide tracking, in the muted on-dark ink. It is the app's
+// name, not a call to action, so it sits back and lets the links lead.
+export const Brand = styled.span`
+    ${typeStyle('caption')}
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: ${color.inkInverseMuted};
+    white-space: nowrap;
+`
+
+export const MenuButton = styled(Button)`
+    ${iconButton}
     color: ${color.inkInverse};
 
     &:hover { background: ${color.surfaceInverseHover}; }

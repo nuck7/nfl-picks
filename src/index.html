@@ -5,6 +5,18 @@
        <meta name="viewport" content="width=device-width, initial-scale=1">
        <meta name="color-scheme" content="light">
        <meta name="theme-color" content="#F7F6F3">
+
+       <!-- require() here resolves through webpack, so each icon is emitted
+            under its content hash and the href points at the built file. A
+            plain relative path would not survive the build: dist is wiped on
+            every run and nothing would copy these across. -->
+       <link rel="icon" type="image/svg+xml" href="<%= require('./assets/nuck-icon.svg') %>">
+       <!-- PNG fallback for anything that will not take an SVG icon. -->
+       <link rel="icon" type="image/png" sizes="32x32" href="<%= require('./assets/nuck-icon-32.png') %>">
+       <!-- iOS uses this one when the app is added to the home screen; it wants
+            a square with no transparency, which the 192 already is. -->
+       <link rel="apple-touch-icon" sizes="192x192" href="<%= require('./assets/nuck-icon-192.png') %>">
+
        <title>NFL Picks</title>
    </head>
 <body>

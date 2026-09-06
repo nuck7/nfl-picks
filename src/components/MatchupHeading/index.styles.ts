@@ -2,7 +2,7 @@ import styled, { css } from "styled-components";
 import { BandInk, BandScrimRgb, Ink, Paper } from "../../utils/teamColors";
 import { color, font, radius, space, typeStyle } from "../../theme";
 
-export type MatchupSize = 'compact' | 'medium' | 'full'
+export type MatchupSize = 'compact' | 'grid' | 'medium' | 'full'
 
 // One row per size, so the type, the logo and the band padding can never drift
 // out of proportion with one another. `full` is the original scale, kept for
@@ -11,6 +11,12 @@ export type MatchupSize = 'compact' | 'medium' | 'full'
 // a headline; `compact` is the standings cell.
 const scale = {
     compact: { font: '16px', tracking: '-0.006em', logo: '24px', chip: '2px', pad: `${space[2]} ${space[3]}` },
+    // Deliberately off the linear scale: big logos, small type. It is the
+    // standings matchup column, where the logos have to hold their own against
+    // the pick tiles alongside them (36px, matched here) while the team names
+    // stay small, because that column's width is competing with fifteen player
+    // columns for the same page.
+    grid: { font: '17px', tracking: '-0.011em', logo: '36px', chip: '2px', pad: `${space[2]} ${space[3]}` },
     medium: { font: '19px', tracking: '-0.015em', logo: '28px', chip: '2px', pad: `${space[2]} ${space[4]}` },
     full: { font: '24px', tracking: '-0.02em', logo: '32px', chip: '3px', pad: `${space[3]} ${space[5]}` },
 } as const

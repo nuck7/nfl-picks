@@ -39,6 +39,14 @@ module.exports = {
         type: 'asset/resource',
         generator: { filename: 'fonts/[name].[contenthash][ext]' },
       },
+      {
+        // Emitted as files rather than inlined: a data URI for the icon would
+        // ride along in the JS bundle on every page load instead of being
+        // cached once under its own content hash.
+        test: /\.(svg|png)$/i,
+        type: 'asset/resource',
+        generator: { filename: 'assets/[name].[contenthash][ext]' },
+      },
     ]
   },
   devtool: prod ? undefined : 'source-map',

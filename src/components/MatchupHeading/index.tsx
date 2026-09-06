@@ -65,6 +65,23 @@ const MatchupHeading: React.FC<Props> = ({
         size === 'full' ? BandContrast.regular : BandContrast.compact
     )
 
+    // Only the standings column abbreviates. Everywhere else has room for the
+    // real name, and initials would be a downgrade rather than a saving.
+    const abbreviate = size === 'grid'
+
+    // ESPN's own code (NE, SEA, KC), not something derived from the name: it is
+    // the form fans actually read, and it is already on both the resolved team
+    // and the game itself. The abbreviation is decoration over the logo, so the
+    // full name is what gets announced rather than the letters.
+    const renderName = (fullName: string, abbreviation?: string) => (
+        abbreviate && abbreviation ? (
+            <>
+                <span aria-hidden='true'>{abbreviation}</span>
+                <VisuallyHidden>{fullName}</VisuallyHidden>
+            </>
+        ) : fullName
+    )
+
     const winner = showResult ? getWinningSideKey(game) : undefined
     const split = winner === 'away' ? WinnerSplit
         : winner === 'home' ? 100 - WinnerSplit
@@ -96,7 +113,10 @@ const MatchupHeading: React.FC<Props> = ({
             >
                 {leadingLogos ? awayLogo : null}
                 <MatchupTeamName $won={winner === 'away'}>
-                    {awayTeam?.displayName ?? game.away.displayName}
+                    {renderName(
+                        awayTeam?.displayName ?? game.away.displayName,
+                        awayTeam?.abbreviation ?? game.away.abbreviation
+                    )}
                 </MatchupTeamName>
                 {leadingLogos ? null : awayLogo}
                 {winner === 'away' ? winnerMark : null}
@@ -110,7 +130,10 @@ const MatchupHeading: React.FC<Props> = ({
             <MatchupTeam $align='start' $lost={Boolean(winner) && winner !== 'home'}>
                 {renderLogo(homeTeam)}
                 <MatchupTeamName $won={winner === 'home'}>
-                    {homeTeam?.displayName ?? game.home.displayName}
+                    {renderName(
+                        homeTeam?.displayName ?? game.home.displayName,
+                        homeTeam?.abbreviation ?? game.home.abbreviation
+                    )}
                 </MatchupTeamName>
                 {winner === 'home' ? winnerMark : null}
             </MatchupTeam>

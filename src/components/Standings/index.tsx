@@ -231,7 +231,7 @@ const Standings = () => {
                 if (!matchup) {
                     return <>{datum.matchupName}</>
                 }
-                return <MatchupHeading size='compact' showResult tone='band' teams={teams} game={matchup} />
+                return <MatchupHeading size='grid' showResult tone='band' teams={teams} game={matchup} />
             },
             footer: (
                 <FooterStack>
@@ -253,14 +253,16 @@ const Standings = () => {
                 // Players are the columns here, so a player's payment sits at the
                 // top of their own column rather than in one of its own. Admins
                 // only: what anyone paid is nobody else's business.
-                header: currentUser.isAdmin ? (
+                header: (
                     <PlayerHeader>
                         <span>{name}</span>
-                        <PaymentBadge $paid={Boolean(method)}>
-                            {method ? PaymentMethodLabels[method] : 'Unpaid'}
-                        </PaymentBadge>
+                        {currentUser.isAdmin ? (
+                            <PaymentBadge $paid={Boolean(method)}>
+                                {method ? PaymentMethodLabels[method] : 'Unpaid'}
+                            </PaymentBadge>
+                        ) : null}
                     </PlayerHeader>
-                ) : name,
+                ),
                 align: 'center',
                 verticalAlign: 'middle',
                 render: (datum) => <PickCell cell={datum.picks[participant.user_id]} />,

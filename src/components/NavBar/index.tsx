@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Avatar } from 'grommet';
 import { Menu } from 'grommet-icons';
 import { useLocation } from 'react-router-dom';
-import { MenuButton, NavLink, NavLinks, ProfileButton, StyledNav } from './index.styles';
+import { Brand, MenuButton, NavLink, NavLinks, NavStart, ProfileButton, StyledNav } from './index.styles';
 import { auth } from '../../resources/firebase.config';
 import { AppMenuOptions, DefaultAvatarImage } from '../../constants';
 import { CurrentUser, MenuOption } from '../../types';
@@ -32,14 +32,17 @@ const NavBar:React.FC<Props> = ({openSideBar, setSideBar, openProfileMenu, setPr
 
     return (
         <StyledNav direction="row" gap="none" pad={{ horizontal: 'medium', vertical: 'xsmall' }}>
-            {user ? (
-                <MenuButton
-                    a11yTitle='Open menu'
-                    aria-expanded={openSideBar}
-                    onClick={() => setSideBar(!openSideBar)}
-                    icon={<Menu />}
-                />
-            ) : null}
+            <NavStart>
+                {user ? (
+                    <MenuButton
+                        a11yTitle='Open menu'
+                        aria-expanded={openSideBar}
+                        onClick={() => setSideBar(!openSideBar)}
+                        icon={<Menu />}
+                    />
+                ) : null}
+                <Brand>NFL Picks</Brand>
+            </NavStart>
             <NavLinks>
                 {(user ? getVisibleMenuOptions(AppMenuOptions, isAdmin) : []).map((option: MenuOption) => (
                     <NavLink

@@ -18,3 +18,4 @@ export const getMatchupLabel = (teams: TeamsKeyed, game: Game) => {
 
     return `${awayTeam?.displayName ?? game.away.displayName} @ ${homeTeam?.displayName ?? game.home.displayName}`
 }
+
