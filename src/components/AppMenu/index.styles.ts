@@ -13,7 +13,7 @@ export const Drawer = styled.div`
     width: min(320px, 84vw);
     height: 100%;
     padding: ${space[3]} ${space[3]} ${space[6]};
-    background: ${color.ink};
+    background: ${color.chrome};
     /* A lit edge rather than a border: on a dark drawer over a dark scrim, this
        is what actually separates the two. */
     box-shadow: inset -1px 0 0 rgba(250, 249, 247, 0.08);

@@ -32,6 +32,7 @@ import { isFinal } from '../utils/grading'
 import { makeWeekId } from '../utils/espn'
 import { getWeekSettings } from '../resources/weeks'
 import { useCurrentPlayer } from '../resources/players'
+import { useThemeMode } from '../utils/themeMode'
 
 // How often to re-check ESPN while a week still has undecided games.
 const ScoreRefreshMs = 60_000
@@ -89,6 +90,10 @@ const App = () => {
     const [teams, setTeams] = useState<TeamsKeyed>({});
     const [currentWeek, setCurrentWeek] = useState<CurrentWeek>(EmptyCurrentWeek);
     const currentUser = useCurrentPlayer();
+    // Mounted here rather than in the menu that exposes it: the hook is what
+    // writes data-theme onto <html>, so it has to run on every page whether or
+    // not anyone opens the profile panel.
+    const theme = useThemeMode();
 
     // One scoreboard request resolves the week every page needs: which week it
     // is, that week's games, whether picks are still open, and -- when we're on
@@ -243,7 +248,7 @@ const App = () => {
                             <AppMenu onClose={closeMenus} />
                         ) : null}
                         {showProfileMenu && currentUser.user ? (
-                            <ProfileMenu onClose={closeMenus} />
+                            <ProfileMenu onClose={closeMenus} mode={theme.mode} onChooseMode={theme.chooseMode} />
                         ) : null}
                     </Shell>
                 </Grommet>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { User as FirebaseUser, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
@@ -137,7 +137,10 @@ export const useCurrentPlayer = (): CurrentUser => {
   const [user, setUser] = useState<Player>();
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  // Stable identity, so callers can depend on it in an effect without the
+  // effect re-running every render. It reads auth.currentUser at call time, so
+  // it never goes stale despite the empty dependency list.
+  const refresh = useCallback(async () => {
     if (!auth.currentUser) {
       return;
     }
@@ -148,7 +151,7 @@ export const useCurrentPlayer = (): CurrentUser => {
     if (existing) {
       setUser({ ...existing, id: auth.currentUser.uid });
     }
-  };
+  }, []);
 
   useEffect(
     () =>

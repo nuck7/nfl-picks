@@ -28,6 +28,14 @@ import {
 
 type Column = ColumnConfig<StandingsRow>
 
+// Every player column is this wide, explicitly. Letting the content size them
+// meant each column was as wide as its own header, so the tile -- centred in
+// whatever room the name left -- sat with different padding in every column and
+// the gaps between tiles came out uneven (57, 36, 27, 46...). A 64px tile and a
+// 76px header both fit inside this less the cell padding, so nothing stretches
+// it and the spacing is even by construction.
+const PlayerColumnWidth = '92px'
+
 // The single source for how an outcome is announced. Colour, tint and badge are
 // all decoration on top of this.
 const OutcomeLabel: Record<Outcome, string> = {
@@ -226,6 +234,10 @@ const Standings = () => {
             property: 'matchupName',
             header: 'Matchups',
             verticalAlign: 'middle',
+            // Held in place while the player columns scroll past it. With a full
+            // pool the table is several screens wide, and without this you lose
+            // track of which game a run of tiles belongs to.
+            pin: true,
             render: (datum) => {
                 const matchup = matchupsById.get(datum.matchupId)
                 if (!matchup) {
@@ -250,6 +262,7 @@ const Standings = () => {
             const method = payments[participant.user_id]
             columns.push({
                 property: participant.user_id,
+                size: PlayerColumnWidth,
                 // Players are the columns here, so a player's payment sits at the
                 // top of their own column rather than in one of its own. Admins
                 // only: what anyone paid is nobody else's business.

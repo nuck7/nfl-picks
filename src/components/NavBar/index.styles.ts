@@ -14,7 +14,7 @@ export const StyledNav = styled(Nav)`
     min-height: ${layout.navHeight};
     /* The one dark surface in the system. No hairline under it: a bar this dark
        separates itself from the ground, and a border would read as a seam. */
-    background: ${color.ink};
+    background: ${color.chrome};
     position: sticky;
     top: 0;
     z-index: 10;

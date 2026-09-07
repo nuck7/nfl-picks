@@ -5,6 +5,7 @@ import { getTeamByHomeAway } from '../../utils/teams';
 import { getWinningSideKey } from '../../utils/grading';
 import { BandContrast, resolveBandColors } from '../../utils/teamColors';
 import VisuallyHidden from '../VisuallyHidden';
+import TeamName from '../TeamName';
 import {
     MatchupCentre,
     MatchupHeadingContainer,
@@ -38,6 +39,10 @@ interface Props {
     // Marks the winner and dims the loser once the game is final. Off by
     // default: the pick form must not give the answer away above its dropdown.
     showResult?: boolean;
+    // Below the mobile breakpoint, show ESPN's code rather than letting the
+    // name ellipse. For the pick form, where the band is full width and still
+    // has to fit two names on a phone.
+    abbreviateOnMobile?: boolean;
 }
 
 // A finished game gives most of the band to the winner's colour, but the loser
@@ -52,6 +57,7 @@ const EvenSplit = 50
 // renders empty while TeamsContext is still loading.
 const MatchupHeading: React.FC<Props> = ({
     teams, game, size = 'full', leadingLogos, tone = 'plain', meta, showResult,
+    abbreviateOnMobile,
 }) => {
     const awayTeam = getTeamByHomeAway(teams, game, 'away')
     const homeTeam = getTeamByHomeAway(teams, game, 'home')
@@ -65,21 +71,16 @@ const MatchupHeading: React.FC<Props> = ({
         size === 'full' ? BandContrast.regular : BandContrast.compact
     )
 
-    // Only the standings column abbreviates. Everywhere else has room for the
-    // real name, and initials would be a downgrade rather than a saving.
-    const abbreviate = size === 'grid'
+    // The standings column abbreviates at every width; the pick form only does
+    // so on a phone. Everywhere else has room for the real name.
+    const abbreviateWhen = size === 'grid' ? 'always'
+        : abbreviateOnMobile ? 'mobile'
+        : undefined
 
-    // ESPN's own code (NE, SEA, KC), not something derived from the name: it is
-    // the form fans actually read, and it is already on both the resolved team
-    // and the game itself. The abbreviation is decoration over the logo, so the
-    // full name is what gets announced rather than the letters.
     const renderName = (fullName: string, abbreviation?: string) => (
-        abbreviate && abbreviation ? (
-            <>
-                <span aria-hidden='true'>{abbreviation}</span>
-                <VisuallyHidden>{fullName}</VisuallyHidden>
-            </>
-        ) : fullName
+        abbreviateWhen
+            ? <TeamName full={fullName} abbreviation={abbreviation} when={abbreviateWhen} />
+            : fullName
     )
 
     const winner = showResult ? getWinningSideKey(game) : undefined

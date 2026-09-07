@@ -122,6 +122,10 @@ export const PlayerHeader = styled.div`
     text-align: center;
     white-space: normal;
     overflow-wrap: anywhere;
+    /* Fill the header cell so the badge below can be pushed to its floor. Names
+       wrap to one, two or three lines, so without this every column's payment
+       status sat at a different height and the row of them read as ragged. */
+    height: 100%;
 `
 
 // Admins only, so it can afford to name the method rather than just say paid.
@@ -133,6 +137,9 @@ export const PaymentBadge = styled.span<{ $paid: boolean }>`
     letter-spacing: 0.06em;
     white-space: nowrap;
     color: ${({ $paid }) => ($paid ? color.positive : color.inkFaint)};
+    /* Pinned to the bottom of the header cell, so every badge lands on one line
+       across the table however many lines the name above it took. */
+    margin-top: auto;
 `
 
 // The heading keeps its own bottom margin from GlobalStyle; the link sits on
@@ -207,6 +214,16 @@ export const LeaderRecord = styled.span`
 // actually hold its position.
 export const TableScroll = styled.div`
     overflow: auto;
+
+    /* The pinned Matchups column. Its band needs 141px to draw both logos and
+       the "@", and the table's own sizing was handing it 115 and clipping the
+       result -- a frozen column you cannot read is worse than none. grommet's
+       column size prop does not reach the cell here, so the floor is CSS. */
+    th:first-child,
+    td:first-child {
+        min-width: 180px;
+    }
+
     -webkit-overflow-scrolling: touch;
     /* Roughly the nav, the heading and the leader banner. A max, so short weeks
        still size to their content rather than leaving dead space. */

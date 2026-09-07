@@ -9,9 +9,10 @@ import { CurrentUserContext, CurrentWeekContext, PickDeadlineContext, SubmitPick
 import { getMatchupId } from '../../utils/teams';
 import { alignPicksToMatchups, createEmptyPick } from '../../utils/picks';
 import { readableTextOn, resolveBandColors } from '../../utils/teamColors';
-import { formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
+import { formatDeadline, formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
 import MatchupHeading from '../MatchupHeading';
 import VisuallyHidden from '../VisuallyHidden';
+import TeamName from '../TeamName';
 import DateSection, { MatchupRow } from '../DateSection';
 import {
     Instructions, InstructionsSteps, InstructionsTitle,
@@ -198,7 +199,12 @@ const PicksForm = () => {
                 onClick={() => choose(matchup, index, side)}
             >
                 {team?.logo ? <TeamChoiceLogo src={team.logo} alt='' /> : null}
-                <TeamChoiceName>{team?.displayName ?? side.displayName}</TeamChoiceName>
+                <TeamChoiceName>
+                    <TeamName
+                        full={team?.displayName ?? side.displayName}
+                        abbreviation={team?.abbreviation ?? side.abbreviation}
+                    />
+                </TeamChoiceName>
                 {selected ? (
                     <TeamChoiceCheck aria-hidden='true'><Checkmark size='18px' color='currentColor' /></TeamChoiceCheck>
                 ) : null}
@@ -228,20 +234,20 @@ const PicksForm = () => {
                         <li>
                             Hit Submit picks. You can come back and change anything
                             until picks lock
-                            {deadline ? ` at ${deadline.toLocaleString()}` : ''}.
+                            {deadline ? ` on ${formatDeadline(deadline)}` : ''}.
                         </li>
                     </InstructionsSteps>
                 </Instructions>
             ) : null}
             {locked ? (
                 <LockedNotice>
-                    Picks for this week closed{deadline ? ` at ${deadline.toLocaleString()}` : ''}.
+                    Picks for this week closed{deadline ? ` on ${formatDeadline(deadline)}` : ''}.
                     You can look, but changes will not be saved.
                 </LockedNotice>
             ) : null}
             {!canSubmit && currentUser.isAdmin ? (
                 <LockedNotice>
-                    Picks closed{deadline ? ` at ${deadline.toLocaleString()}` : ''}.
+                    Picks closed{deadline ? ` on ${formatDeadline(deadline)}` : ''}.
                     You can still submit as an admin.
                 </LockedNotice>
             ) : null}
@@ -280,6 +286,7 @@ const PicksForm = () => {
                                         appear above the buttons you pick with. */}
                                     <MatchupHeading
                                         size='medium'
+                                        abbreviateOnMobile
                                         tone='band'
                                         teams={teams}
                                         game={matchup}

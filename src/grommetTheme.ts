@@ -122,9 +122,9 @@ export const grommetTheme: ThemeType = {
             font: { weight: font.medium },
         },
         primary: {
-            background: color.ink,
-            border: { color: color.ink, width: '1px' },
-            color: color.inkInverse,
+            background: color.action,
+            border: { color: color.action, width: '1px' },
+            color: color.onAction,
             font: { weight: font.medium },
         },
         secondary: {
@@ -141,8 +141,26 @@ export const grommetTheme: ThemeType = {
         },
         hover: {
             default: { background: color.surfaceHover },
-            primary: { background: color.inkHover },
+            primary: { background: color.actionHover },
             secondary: { background: color.surfaceSunken },
+        },
+        // Explicit, rather than global.control.disabled's 40% opacity. Fading
+        // the whole button fades its label with it, and once the primary pair
+        // inverts in dark mode that put near-black text on a washed-out dark
+        // fill -- the Sign in button had no readable label at all. A real
+        // surface with a real muted ink stays legible in both schemes.
+        disabled: {
+            opacity: 1,
+            background: color.surfaceSunken,
+            border: { color: color.border },
+            // On a PRIMARY button grommet uses disabled.color as the background
+            // and then derives a label colour from it (StyledButton.js:97) --
+            // which it cannot do from a var(), so it falls back to a
+            // translucent white and the label vanishes. Hence the surface here
+            // and the label pinned in extend, which is appended last and so
+            // wins for both primary and secondary.
+            color: color.surfaceSunken,
+            extend: `color: ${color.inkFaint};`,
         },
         transition: {
             timing: motion.ease,
@@ -221,6 +239,17 @@ export const grommetTheme: ThemeType = {
             font: { weight: `${font.medium}`, size: type.caption.size },
             color: 'text-weak',
             gap: 'small',
+            // grommet wraps header content in two Boxes, both height:auto, so a
+            // header taller than its own content (the row is sized by the
+            // longest player name) left them floating at the top of the cell.
+            // Stretching the chain is what lets PlayerHeader fill the cell and
+            // drop the payment badge onto a shared baseline.
+            extend: `
+                > div,
+                > div > div {
+                    height: 100%;
+                }
+            `,
         },
         // base.js:924 ships 'bold'. There is no bold in this system.
         primary: { weight: `${font.medium}` },
@@ -235,6 +264,19 @@ export const grommetTheme: ThemeType = {
         // The hairline is repeated here because border-collapse: separate (which
         // grommet switches on for pinning) drops the one set above.
         pinned: {
+            // The pinned Matchups column. background (rather than only extend)
+            // because grommet hands this to the cell's Box directly, which is
+            // what actually stops rows showing through as they scroll under it.
+            // The inset right edge is the only cue that the column is pinned
+            // once the table is scrolled sideways.
+            body: {
+                background: color.surface,
+                extend: `box-shadow: inset -1px 0 0 ${color.border};`,
+            },
+            footer: {
+                background: color.surfaceSunken,
+                extend: `box-shadow: inset -1px 0 0 ${color.border};`,
+            },
             header: {
                 extend: `
                     background: ${color.surface};

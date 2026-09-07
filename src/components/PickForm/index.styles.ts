@@ -48,16 +48,16 @@ export const TeamSelectContainer = styled.div`
 `
 
 export const SubmitButton = styled(Button)`
-    border: 2px solid ${color.ink};
+    border: 2px solid ${color.action};
     border-radius: ${radius.lg};
     padding: ${space[3]} ${space[8]};
-    background: ${color.ink};
-    color: ${color.inkInverse};
+    background: ${color.action};
+    color: ${color.onAction};
     font-weight: 500;
 
     &:hover:not(:disabled) {
-        background: ${color.inkHover};
-        border-color: ${color.inkHover};
+        background: ${color.actionHover};
+        border-color: ${color.actionHover};
     }
 
     &:disabled {
