@@ -1,7 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Button, DataTable, Form, Layer, Select, TextInput } from 'grommet';
 import { CurrentUserContext, CurrentWeekContext } from '../../App';
-import { addManagedPlayer, getPlayers, setPlayerName, setPlayerRole } from '../../resources/players';
+import {
+    DuplicateEmailError, addManagedPlayer, getPlayers, setPlayerName, setPlayerRole,
+    sortPlayersByName,
+} from '../../resources/players';
 import { CurrentUser, CurrentWeek, DropdownOption, PaymentMethod, Player, SeedSummary } from '../../types';
 import { makeWeekId } from '../../utils/espn';
 import { isAdmin } from '../../utils/admin';
@@ -9,7 +12,7 @@ import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
 import { getSeasonWeeks, getWeekSettings, setWeekLock, setWeekWinner } from '../../resources/weeks';
 import { getWeekGames } from '../../resources/cache';
 import { getPicks } from '../../resources/firebase';
-import { findPickForMatchup, hasCompletePicks } from '../../utils/picks';
+import { countMadePicks, findPickForMatchup, hasCompletePicks } from '../../utils/picks';
 import {
     addOutcome, emptyRecord, formatRecord, getPickOutcome, getTieBreakerTotal,
     getWeekWinner, Leader,
@@ -36,6 +39,7 @@ import {
     NameCell,
     NameInput,
     PaymentCell,
+    PickStatus,
     RoleLabel,
     Hint,
     LockRow,
@@ -100,6 +104,19 @@ const computeWeekWinner = async (
     return getWeekWinner(entries, getTieBreakerTotal(games))
 }
 
+// Who entered the week the payments table is on. The two halves are held in one
+// object so they are always replaced together: a count of 6 shown against the
+// PREVIOUS week's 16 games would be a plausible-looking lie, and separate state
+// would leave exactly that gap between the two setStates.
+type WeekEntries = {
+    // Games in the week. 0 while it loads, or if the schedule can't be read --
+    // either way there is nothing to measure an entry against.
+    games: number
+    // Keyed by player id, how many of those games they have picked. A player
+    // with no picks document at all is absent rather than 0.
+    made: Record<string, number>
+}
+
 const tabId = (id: AdminTab) => `admin_tab_${id}`
 const panelId = (id: AdminTab) => `admin_panel_${id}`
 
@@ -137,6 +154,9 @@ const Admin = () => {
     const [payments, setPayments] = useState<Record<string, PaymentMethod>>({})
     const [savingPayment, setSavingPayment] = useState<string>()
     const [loadingPayments, setLoadingPayments] = useState(false)
+
+    const [entries, setEntries] = useState<WeekEntries>({ games: 0, made: {} })
+    const [loadingEntries, setLoadingEntries] = useState(false)
 
     const [resultRows, setResultRows] = useState<ResultRow[]>([])
     const [loadingResults, setLoadingResults] = useState(false)
@@ -210,6 +230,55 @@ const Admin = () => {
 
         return () => { current = false }
     }, [currentUser.isAdmin, paymentsWeekId])
+
+    // Who actually played the week the table is on. Plenty of people sit weeks
+    // out, and there is nothing to collect from them -- so this is the column
+    // that says which blanks in the payments beside it are worth chasing.
+    //
+    // Its own effect rather than folded into the payments read above: a slow
+    // picks query must not hold the payment dropdowns disabled, since recording
+    // a payment is what this tab is actually for. Gated on the tab for the same
+    // reason the Results tab is -- a games read and a picks query is not
+    // something to spend on an admin who came here to add a player.
+    useEffect(() => {
+        if (!currentUser.isAdmin
+            || tab !== 'payments'
+            || !paymentsWeekId
+            || !paymentWeek
+            || !currentWeek.season) {
+            return
+        }
+
+        let current = true
+        setLoadingEntries(true)
+        setEntries({ games: 0, made: {} })
+
+        Promise.all([
+            getWeekGames(currentWeek.season, paymentWeek.value),
+            getPicks(paymentsWeekId),
+        ])
+            .then(([games, weekPicks]) => {
+                if (!current) {
+                    return
+                }
+
+                setEntries({
+                    games: games.length,
+                    made: Object.fromEntries(weekPicks.map((entry) =>
+                        [entry.user_id, countMadePicks(entry, games)])),
+                })
+            })
+            // A week ESPN has no schedule for, or an unseeded one, leaves the
+            // column reading "--" rather than claiming nobody played.
+            .catch(console.error)
+            .finally(() => {
+                if (current) {
+                    setLoadingEntries(false)
+                }
+            })
+
+        return () => { current = false }
+    }, [currentUser.isAdmin, tab, currentWeek.season, paymentWeek, paymentsWeekId])
 
     // Only while the tab is actually open. Working out the suggestions costs a
     // games read and a picks query per played week, which is not something to
@@ -355,7 +424,13 @@ const Admin = () => {
             setError(undefined)
         } catch (addError) {
             console.error(addError)
-            setError('Could not add the player. Check that the Firestore rules allow admins to write the players collection.')
+            // A duplicate is the one failure here that is about the data rather
+            // than the setup, and it names the player already holding the
+            // address -- which is the whole answer, so the rules advice below
+            // would only be misleading.
+            setError(addError instanceof DuplicateEmailError
+                ? addError.message
+                : 'Could not add the player. Check that the Firestore rules allow admins to write the players collection.')
         } finally {
             setAdding(false)
         }
@@ -471,6 +546,54 @@ const Admin = () => {
     // Counted off the roster rather than off the payments map, so a payment left
     // behind by a deleted player can't push the total past the number of players.
     const paidCount = players.filter((player) => payments[player.id]).length
+
+    // One order for every player list on this page: the Manage Players table,
+    // the winner dropdowns, and the base the payments table sorts further.
+    // Memoised because all three read it, and because a fresh array on every
+    // keystroke in the add-player form would hand the Selects a new `options`
+    // prop each time.
+    //
+    // A rename therefore moves its row to the name's new place once saved, which
+    // is the same thing that would happen on the next load.
+    const sortedPlayers = useMemo(() => sortPlayersByName(players), [players])
+
+    // Ordered for the job this tab is for. Anyone with an entry this week is
+    // someone a payment may be due from, so they come first and the people who
+    // sat it out settle to the bottom, out of the way. Partial entries count as
+    // having picks: they are the ones most in need of a decision, so burying
+    // them with the non-players would be exactly backwards.
+    //
+    // The grouping is applied over the alphabetical order rather than instead of
+    // it, which works because sort is stable -- so names stay in order inside
+    // each group. Copied first: sortedPlayers is shared with the dropdowns above
+    // and must not be reordered under them.
+    //
+    // While the picks are still loading nobody has an entry yet. Grouping on
+    // that would sort the whole table alphabetically and then visibly reshuffle
+    // it a moment later, so it is skipped until there is a real answer.
+    const paymentRows = useMemo(() => {
+        if (loadingEntries || !entries.games) {
+            return sortedPlayers
+        }
+
+        const hasPicks = (player: Player) => (entries.made[player.id] ?? 0) > 0
+
+        return [...sortedPlayers].sort((a, b) => Number(hasPicks(b)) - Number(hasPicks(a)))
+    }, [sortedPlayers, entries, loadingEntries])
+
+    // The Accept button is only offered on a row where it would change
+    // something, so once every week agrees with its suggestion the last column
+    // renders null the whole way down -- and an empty column with an empty
+    // header still draws its borders and claims its width, which reads as a
+    // stray fourth column. Leave it out entirely unless a row can use it.
+    const hasSuggestionToApply = resultRows.some((row) =>
+        row.suggestion && row.suggestion.userId !== row.winnerPlayerId)
+
+    // Complete entries only, which is the same bar the standings use to decide
+    // who gets a column -- so this number and the one on the standings agree.
+    const playedCount = entries.games > 0
+        ? players.filter((player) => entries.made[player.id] === entries.games).length
+        : 0
 
     const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
         const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -605,7 +728,7 @@ const Admin = () => {
                     <Hint>
                         {currentWeek.loading
                             ? 'Loading this week…'
-                            : `Who has paid in for the ${currentWeek.season} season, and how. Leave a player blank until they pay — clearing a method marks them unpaid again.`}
+                            : `Who has paid in for the ${currentWeek.season} season, and how. Leave a player blank until they pay — clearing a method marks them unpaid again. Picks shows who actually entered the week: nobody owes for a week they sat out.`}
                     </Hint>
                     <WeekSelectContainer>
                         <WeekSelectLabel htmlFor='payment_week'>Week</WeekSelectLabel>
@@ -626,7 +749,7 @@ const Admin = () => {
                     ) : players.length ? (
                         <DataTable
                             border={true}
-                            data={players}
+                            data={paymentRows}
                             primaryKey='id'
                             columns={[
                                 {
@@ -640,6 +763,52 @@ const Admin = () => {
                                             {loadingPayments
                                                 ? 'Loading…'
                                                 : `${paidCount} of ${players.length} paid`}
+                                        </SeedNote>
+                                    ),
+                                },
+                                {
+                                    // Not a field on Player -- grommet only uses
+                                    // this as the column's key, and nothing on
+                                    // this table sorts.
+                                    property: 'picks',
+                                    header: 'Picks',
+                                    render: (player: Player) => {
+                                        const made = entries.made[player.id]
+
+                                        // Nothing to measure against yet. An em
+                                        // dash, not "No picks": we don't know.
+                                        if (loadingEntries || !entries.games) {
+                                            return <SeedNote>{loadingEntries ? 'Loading…' : '—'}</SeedNote>
+                                        }
+
+                                        if (made === undefined || made === 0) {
+                                            return <PickStatus $state='none'>Sat out</PickStatus>
+                                        }
+
+                                        if (made < entries.games) {
+                                            return (
+                                                <PickStatus
+                                                    $state='partial'
+                                                    title={`Started but did not finish — ${entries.games - made} game${entries.games - made === 1 ? '' : 's'} left blank.`}
+                                                >
+                                                    {`${made} of ${entries.games}`}
+                                                </PickStatus>
+                                            )
+                                        }
+
+                                        return <PickStatus $state='complete'>Played</PickStatus>
+                                    },
+                                    footer: (
+                                        <SeedNote>
+                                            {/* Three states, not two: a week
+                                                whose schedule never arrives is
+                                                unknown, and would otherwise sit
+                                                on "Loading…" for good. */}
+                                            {loadingEntries
+                                                ? 'Loading…'
+                                                : entries.games
+                                                    ? `${playedCount} of ${players.length} played`
+                                                    : '—'}
                                         </SeedNote>
                                     ),
                                 },
@@ -711,7 +880,7 @@ const Admin = () => {
                                                 id={`winner_${row.weekId}`}
                                                 name={`winner_${row.weekId}`}
                                                 a11yTitle={`Winner of ${row.label}`}
-                                                options={players}
+                                                options={sortedPlayers}
                                                 labelKey='name'
                                                 valueKey={{ key: 'id', reduce: true }}
                                                 value={row.winnerPlayerId ?? ''}
@@ -744,7 +913,10 @@ const Admin = () => {
                                         )
                                     },
                                 },
-                                {
+                                // Spread rather than a ternary inside the
+                                // array: a false/null entry is still a column
+                                // as far as grommet is concerned.
+                                ...(hasSuggestionToApply ? [{
                                     property: 'week',
                                     header: '',
                                     render: (row: ResultRow) => {
@@ -765,7 +937,7 @@ const Admin = () => {
                                             />
                                         )
                                     },
-                                },
+                                }] : []),
                             ]}
                         />
                     ) : (
@@ -830,7 +1002,7 @@ const Admin = () => {
                 ) : players.length ? (
                     <DataTable
                         border={true}
-                        data={players}
+                        data={sortedPlayers}
                         primaryKey='id'
                         columns={[
                             {

@@ -6,6 +6,7 @@ import { auth } from "../../resources/firebase.config";
 import { CurrentUserContext } from "../../App";
 import { getVisibleMenuOptions } from "../../utils/admin";
 import { CurrentUser, MenuOption } from "../../types";
+import { ThemeMode } from "../../utils/themeMode";
 import { layout } from "../../theme";
 import {
     Divider,
@@ -15,12 +16,22 @@ import {
     IdentityText,
     MenuNav,
     MenuRow,
+    ModeButton,
+    ModeGroup,
     Panel,
     SectionLabel,
 } from "./index.styles";
 
+const ThemeModes: { id: ThemeMode; label: string }[] = [
+    { id: 'system', label: 'System' },
+    { id: 'light', label: 'Light' },
+    { id: 'dark', label: 'Dark' },
+]
+
 interface Props {
     onClose: () => void
+    mode: ThemeMode
+    onChooseMode: (mode: ThemeMode) => void
 }
 
 // Hangs the panel just below the nav bar, with its right edge on the same line
@@ -33,7 +44,7 @@ const PanelOffset = {
     right: layout.gutter,
 }
 
-const ProfileMenu: React.FC<Props> = ({ onClose }) => {
+const ProfileMenu: React.FC<Props> = ({ onClose, mode, onChooseMode }) => {
     const { user, isAdmin } = useContext<CurrentUser>(CurrentUserContext)
     const { pathname } = useLocation()
 
@@ -75,6 +86,26 @@ const ProfileMenu: React.FC<Props> = ({ onClose }) => {
                         <Divider />
                     </>
                 ) : null}
+
+                <SectionLabel id='profile-menu-appearance'>Appearance</SectionLabel>
+                <ModeGroup role='group' aria-labelledby='profile-menu-appearance'>
+                    {ThemeModes.map((option) => (
+                        <ModeButton
+                            key={option.id}
+                            type='button'
+                            $active={mode === option.id}
+                            // aria-pressed rather than a radiogroup: these are
+                            // three buttons that set a value, and only one is
+                            // ever on.
+                            aria-pressed={mode === option.id}
+                            onClick={() => onChooseMode(option.id)}
+                        >
+                            {option.label}
+                        </ModeButton>
+                    ))}
+                </ModeGroup>
+
+                <Divider />
 
                 <SectionLabel id='profile-menu-account'>Account</SectionLabel>
                 <MenuNav gap='none' aria-labelledby='profile-menu-account'>

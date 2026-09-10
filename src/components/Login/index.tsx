@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Form, FormField, TextInput } from 'grommet';
 import { FormView, FormViewHide } from 'grommet-icons';
 import {
@@ -12,6 +12,8 @@ import {
 } from 'firebase/auth';
 import { auth } from '../../resources/firebase.config';
 import { setOwnName } from '../../resources/players';
+import { CurrentUserContext } from '../../App';
+import { CurrentUser } from '../../types';
 import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
 import {
     Actions,
@@ -60,6 +62,7 @@ const SocialProviders: SocialProvider[] = [
 ];
 
 const SignInScreen = () => {
+    const currentUser = useContext<CurrentUser>(CurrentUserContext)
     const [mode, setMode] = useState<Mode>('signIn')
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
@@ -105,6 +108,12 @@ const SignInScreen = () => {
         // The auth listener has already fired by now and written the fallback, so
         // this has to overwrite it rather than merely fill a gap.
         await setOwnName(name.trim())
+        // ...and the listener also pushed that fallback into the shared user
+        // state, which nothing else disturbs -- updateProfile does not re-fire
+        // onAuthStateChanged. Without this re-read the app carries the
+        // email-derived name until a full reload, and stamps it onto any picks
+        // submitted in the meantime as user_name.
+        await currentUser.refresh()
     })
 
     const signInWithProvider = (provider: AuthProvider) => run(async () => {

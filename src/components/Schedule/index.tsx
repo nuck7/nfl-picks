@@ -101,11 +101,18 @@ const Schedule = () => {
                                 <MatchupRow key={getMatchupId(matchup)}>
                                     {/* showResult gives a finished game 70% of
                                         the band to the winner's colour, marks
-                                        it, and desaturates the loser. */}
+                                        it, and desaturates the loser.
+
+                                        abbreviateOnMobile because a full-width
+                                        band still can't hold two names on a
+                                        phone: at 19px the pair ellipsed to
+                                        "New ..." and "Se...", which name
+                                        nobody. The codes fit with room over. */}
                                     <MatchupHeading
                                         size='medium'
                                         tone='band'
                                         showResult
+                                        abbreviateOnMobile
                                         teams={teams}
                                         game={matchup}
                                         meta={

@@ -41,7 +41,7 @@ const AppMenu: React.FC<Props> = ({ onClose }) => {
             // The container carries the ink, not just the panel inside it: with
             // the theme's white layer background showing through, the drawer's
             // edges flashed white for the length of the slide.
-            background={color.ink}
+            background={color.chrome}
             // Without this grommet expands the Layer to fill the screen below
             // its own breakpoint -- which is every phone, i.e. the only place
             // this drawer is ever shown. The ink container then covered the

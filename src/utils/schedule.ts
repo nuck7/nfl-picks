@@ -51,6 +51,12 @@ export const formatGameTime = (date: string) =>
 
 // Groups a week's matchups into one section per calendar day, days in
 // chronological order and kickoffs ordered within each day.
+// Chronological, earliest first. An unparseable date sorts as NaN, which
+// compares false against everything and so leaves that game where it was rather
+// than throwing the rest of the order out.
+export const byKickoff = (a: Game, b: Game) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+
 export const groupMatchupsByDate = (matchups: Game[]): MatchupsByDate[] => {
     const sections = new Map<string, MatchupsByDate>()
 
@@ -64,9 +70,6 @@ export const groupMatchupsByDate = (matchups: Game[]): MatchupsByDate[] => {
             sections.set(key, { key, date: matchup.date, matchups: [matchup] })
         }
     }
-
-    const byKickoff = (a: Game, b: Game) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime()
 
     return [...sections.values()]
         .map((section) => ({
@@ -104,3 +107,22 @@ export const fromDateTimeLocalValue = (value: string) => {
 
     return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
+
+// "Sun, Sep 13 at 12:00 PM EDT", in the reader's own timezone.
+//
+// This used to be pinned to America/Los_Angeles so every player read the same
+// wall-clock time. That made it the one time in the app not shown locally --
+// kickoffs and date headings are all local -- so a player on the east coast saw
+// their games at 1:25 PM and the lock at "12:00 PM PDT" and had to convert.
+// Omitting timeZone lets Intl use the runtime's zone. timeZoneName stays: it is
+// what keeps the moment unambiguous, and it still handles the DST changeover
+// mid-season on its own.
+export const formatDeadline = (date: Date) =>
+    new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+    }).format(date)

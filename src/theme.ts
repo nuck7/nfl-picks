@@ -8,7 +8,13 @@ import { css } from 'styled-components'
 // object from these values instead, so there is one source and one direction.
 
 /* -------------------------------------------------------------- colour -- */
-export const color = {
+// Two palettes, one set of token names. Nothing imports these directly except
+// GlobalStyle, which writes them out as CSS custom properties for both schemes;
+// everything else uses `color` below, whose values are var() references. That
+// is what lets a theme switch be an attribute flip on <html> rather than a
+// re-render -- the 17 style files that import `color` never learn there are two
+// palettes at all.
+export const lightPalette = {
     // Ground / surface. Warm at very low chroma. Nothing in this system casts a
     // shadow, so a ground that isn't white is the only thing making a white
     // card read as raised; a neutral grey at the same lightness reads as
@@ -24,20 +30,30 @@ export const color = {
     borderStrong: '#D9D6CF',
 
     ink: '#1A1816',        // 16.5:1 on surface
-    inkHover: '#332F2B',   // primary button hover
+    inkHover: '#332F2B',
     inkMuted: '#6B6763',   //  5.6:1 -- the safe muted-body colour
     inkFaint: '#8F8B86',   //  3.4:1 -- FAILS AA for body. >=19px or decorative only
-    inkInverse: '#FAF9F7',
 
-    // The nav bar is the one dark surface in this system, so it needs on-dark
-    // partners for the roles above. inkInverse is its full-strength text;
-    // inkInverseMuted is the resting state for a nav link, at 7.1:1 on ink --
-    // the on-dark counterpart to inkMuted. The two washes are what hover and the
-    // current page sit on; they are alpha rather than solid so the bar keeps one
-    // background colour and nothing has to be re-derived if ink ever moves.
+    // The nav bar and the mobile drawer are the one dark surface in this
+    // system, and they stay dark in BOTH schemes -- which is why `chrome` is
+    // its own token rather than reusing `ink`. Sharing them was fine while
+    // there was one palette; in dark mode `ink` becomes near-white and the nav
+    // bar would have inverted into a white slab.
+    chrome: '#1A1816',
+    // On-chrome partners. inkInverse is full-strength text there,
+    // inkInverseMuted the resting state for a nav link (7.1:1 on chrome). The
+    // two washes are what hover and the current page sit on; they are alpha
+    // rather than solid so the bar keeps one background colour.
+    inkInverse: '#FAF9F7',
     inkInverseMuted: '#A8A39D',
     surfaceInverseHover: 'rgba(250, 249, 247, 0.10)',
     surfaceInverseActive: 'rgba(250, 249, 247, 0.16)',
+
+    // Primary buttons. A dark button on a light page, and the reverse in dark
+    // mode -- so this pair inverts between schemes while `chrome` does not.
+    action: '#1A1816',
+    actionHover: '#332F2B',
+    onAction: '#FAF9F7',
 
     // Team logos carry the colour in this app, so accents are rationed:
     // focus rings, text links, destructive copy.
@@ -46,6 +62,55 @@ export const color = {
     negativeSurface: '#FCF2F0',
     positive: '#1F7A4D',
 } as const
+
+export type ColorToken = keyof typeof lightPalette
+
+// Same names, same roles. Warm neutrals again rather than pure greys, so the
+// two schemes read as one design; the team logos are the only saturated thing
+// on the page in either.
+export const darkPalette: Record<ColorToken, string> = {
+    ground: '#141312',
+    surface: '#1C1B19',
+    surfaceSunken: '#232120',
+    surfaceHover: '#272522',
+
+    border: '#302D2A',
+    borderStrong: '#423E39',
+
+    ink: '#F2F0EC',        // 15.8:1 on ground
+    inkHover: '#FFFFFF',
+    inkMuted: '#A9A49D',   //  7.8:1
+    inkFaint: '#7E7973',   //  4.3:1 -- same caveat as light: not for body text
+
+    // Deeper than the ground rather than lighter, so the bar still reads as
+    // chrome against a dark page instead of as another raised card.
+    chrome: '#0E0D0C',
+    inkInverse: '#FAF9F7',
+    inkInverseMuted: '#A8A39D',
+    surfaceInverseHover: 'rgba(250, 249, 247, 0.10)',
+    surfaceInverseActive: 'rgba(250, 249, 247, 0.16)',
+
+    action: '#F2F0EC',
+    actionHover: '#FFFFFF',
+    onAction: '#1A1816',
+
+    // #062F4F is unreadable on a dark ground, so the accent lifts to a tint of
+    // itself; the other three lift for the same reason.
+    accent: '#8FBCE8',
+    negative: '#FF7A5C',
+    negativeSurface: '#2B1714',
+    positive: '#57C08A',
+}
+
+// What every style file imports. These are var() references, not colours, so
+// they resolve to whichever palette GlobalStyle has written onto <html>.
+//
+// Anything doing arithmetic on a colour must NOT use these -- a var() string
+// cannot be parsed into channels. utils/teamColors.ts keeps its own literal Ink
+// and Paper for exactly that reason.
+export const color = Object.fromEntries(
+    (Object.keys(lightPalette) as ColorToken[]).map((token) => [token, `var(--c-${token})`])
+) as Record<ColorToken, string>
 
 /* ---------------------------------------------------------------- type -- */
 export const font = {
@@ -112,10 +177,6 @@ export const media = {
 /* -------------------------------------------------------------- layout -- */
 export const layout = {
     maxWidth: '1100px',   // most pages: schedule, admin, prose
-    // The standings only. One column per player plus the matchup column runs
-    // past 1100px well before a full pool of fifteen, and the cap was spending
-    // the space on margin while the table scrolled inside it.
-    wideWidth: '1560px',
     readWidth: '620px',   // prose: admin intro, profile
     formWidth: '400px',   // login
     navHeight: '60px',

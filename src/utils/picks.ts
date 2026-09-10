@@ -1,5 +1,6 @@
 import { Game, Pick, PicksForm, Player } from '../types';
 import { getMatchupId } from './teams';
+import { PoolTimeZone, noonOnDayOf } from './timezone';
 
 // A slot for one game, with no team chosen yet. The two sides are filled in
 // from the matchup rather than left blank: the slot knows which game it is for.
@@ -28,6 +29,18 @@ export const alignPicksToMatchups = (picks: Pick[], matchups: Game[]): Pick[] =>
         return chosen ? { ...slot, pickedTeam: chosen } : slot
     })
 
+// How many of the week's games this entry has actually chosen a team for. The
+// form saves whatever you have so far, so a document can hold anywhere from one
+// pick to all of them, and the count is what tells a half-finished entry from a
+// finished one.
+//
+// Counted over the matchups rather than over the stored picks: a pick for a game
+// that is no longer in the week -- a rescheduled matchup, a stale document --
+// should not count towards the week as it stands.
+export const countMadePicks = (entry: PicksForm, matchups: Game[]): number =>
+    matchups.filter((matchup) =>
+        Boolean(findPickForMatchup(entry.picks ?? [], matchup)?.pickedTeam)).length
+
 // Every game in the week picked. A saved document is not the same as a finished
 // entry -- the form stores whatever you have so far -- so the standings use this
 // rather than "has a picks document" to decide who appears.
@@ -36,12 +49,17 @@ export const alignPicksToMatchups = (picks: Pick[], matchups: Game[]): Pick[] =>
 // are already tied, and a missing one is rendered as an em dash rather than
 // treated as an unfinished entry.
 export const hasCompletePicks = (entry: PicksForm, matchups: Game[]): boolean =>
-    matchups.length > 0
-    && matchups.every((matchup) =>
-        Boolean(findPickForMatchup(entry.picks ?? [], matchup)?.pickedTeam))
+    matchups.length > 0 && countMadePicks(entry, matchups) === matchups.length
 
-// Picks lock at noon on the day of the week's first game, in the viewer's own
-// timezone -- the same wall-clock day the schedule groups that game under.
+// Picks lock at noon on the day of the week's first game, in the pool's own
+// timezone -- one instant, the same for every viewer, which is then rendered in
+// each reader's local zone by formatDeadline.
+//
+// It used to be noon in whatever zone the VIEWER happened to be in, which made
+// the deadline a different moment for each of them: a reader in London locked
+// ten hours after a Thursday night kickoff, and nobody outside the seeding
+// admin's zone agreed with the defaultLockAtMs the Firestore rules enforce.
+//
 // An admin can override this per week; see getEffectiveDeadline.
 export const getPickDeadline = (games: Game[]): Date | undefined => {
     const kickoffs = games
@@ -52,10 +70,7 @@ export const getPickDeadline = (games: Game[]): Date | undefined => {
         return undefined
     }
 
-    const deadline = new Date(Math.min(...kickoffs))
-    deadline.setHours(12, 0, 0, 0)
-
-    return deadline
+    return noonOnDayOf(new Date(Math.min(...kickoffs)), PoolTimeZone)
 }
 
 // An admin's lock time for the week wins over the computed one. An unparseable

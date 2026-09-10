@@ -35,8 +35,11 @@ export const SocialButton = styled.button<{ $dark?: boolean }>`
     ${typeStyle('label')}
     font-family: inherit;
     cursor: pointer;
-    border: 1px solid ${(props) => (props.$dark ? color.ink : color.border)};
-    background: ${(props) => (props.$dark ? color.ink : color.surface)};
+    /* borderStrong on the dark variant, not chrome: the button is near-black in
+       both schemes, so against a dark ground a same-colour border left it with
+       no edge at all. In light mode the border is hidden by the fill anyway. */
+    border: 1px solid ${(props) => (props.$dark ? color.borderStrong : color.border)};
+    background: ${(props) => (props.$dark ? color.chrome : color.surface)};
     color: ${(props) => (props.$dark ? color.inkInverse : color.ink)};
 
     &:hover:not(:disabled) {

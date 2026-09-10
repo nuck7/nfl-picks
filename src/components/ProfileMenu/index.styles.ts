@@ -104,3 +104,42 @@ export const MenuRow = styled(LinkButton)`
     &[aria-current='page'] { background: ${color.surfaceSunken}; }
 `
 
+
+/* ------------------------------------------------------------ appearance -- */
+
+// A segmented control rather than a switch: there are three states, and
+// "System" is a real choice -- follow the OS from now on -- not the absence of
+// one, so a two-position toggle could not express it.
+export const ModeGroup = styled.div`
+    display: flex;
+    flex-direction: row;
+    gap: ${space[1]};
+    padding: ${space[1]};
+    border: ${border.hairline};
+    border-radius: ${radius.pill};
+`
+
+export const ModeButton = styled.button<{ $active?: boolean }>`
+    ${typeStyle('caption')}
+    flex: 1 1 0;
+    appearance: none;
+    border: 0;
+    border-radius: ${radius.pill};
+    padding: ${space[2]} 0;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: color ${motion.fast} ${motion.ease},
+                background-color ${motion.fast} ${motion.ease};
+    background: ${({ $active }) => ($active ? color.surfaceSunken : 'transparent')};
+    color: ${({ $active }) => ($active ? color.ink : color.inkMuted)};
+
+    &:hover {
+        color: ${color.ink};
+    }
+
+    &:focus-visible {
+        outline: 2px solid ${color.accent};
+        outline-offset: -2px;
+    }
+`

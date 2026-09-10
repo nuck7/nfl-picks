@@ -1,5 +1,6 @@
 import { createGlobalStyle } from 'styled-components'
-import { color, font, space, type } from './theme'
+import { color, darkPalette, font, lightPalette, space, type } from './theme'
+import type { ColorToken } from './theme'
 
 // Rendered as the first child inside <Grommet>. Everything here is a bare
 // element selector -- specificity 0-0-1 -- while every styled-component class
@@ -9,7 +10,37 @@ import { color, font, space, type } from './theme'
 // (Standings, Schedule, Login, Admin x2, Profile x2, Teams, Weeks, Seasons) and
 // have been picking up browser defaults. They inherit the scale from here
 // without any page being edited.
+// The palette as custom properties. Written twice rather than toggled in JS so
+// the browser does the switching: no component re-renders, and no flash of the
+// wrong palette while React boots.
+const paletteVars = (palette: Record<ColorToken, string>) =>
+    (Object.keys(palette) as ColorToken[])
+        .map((token) => `--c-${token}: ${palette[token]};`)
+        .join('\n        ')
+
 export const GlobalStyle = createGlobalStyle`
+    /* Light is the default. Dark applies when the OS asks for it, UNLESS the
+       viewer has explicitly chosen light -- data-theme is the override, and it
+       has to beat the media query in both directions, which is why the scheme
+       is written three times rather than two. color-scheme comes along so form
+       controls, scrollbars and the caret follow too. */
+    :root {
+        ${paletteVars(lightPalette)}
+        color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+            ${paletteVars(darkPalette)}
+            color-scheme: dark;
+        }
+    }
+
+    :root[data-theme='dark'] {
+        ${paletteVars(darkPalette)}
+        color-scheme: dark;
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
 
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

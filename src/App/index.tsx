@@ -32,6 +32,7 @@ import { isFinal } from '../utils/grading'
 import { makeWeekId } from '../utils/espn'
 import { getWeekSettings } from '../resources/weeks'
 import { useCurrentPlayer } from '../resources/players'
+import { useThemeMode } from '../utils/themeMode'
 
 // How often to re-check ESPN while a week still has undecided games.
 const ScoreRefreshMs = 60_000
@@ -89,6 +90,10 @@ const App = () => {
     const [teams, setTeams] = useState<TeamsKeyed>({});
     const [currentWeek, setCurrentWeek] = useState<CurrentWeek>(EmptyCurrentWeek);
     const currentUser = useCurrentPlayer();
+    // Mounted here rather than in the menu that exposes it: the hook is what
+    // writes data-theme onto <html>, so it has to run on every page whether or
+    // not anyone opens the profile panel.
+    const theme = useThemeMode();
 
     // One scoreboard request resolves the week every page needs: which week it
     // is, that week's games, whether picks are still open, and -- when we're on
@@ -107,16 +112,6 @@ const App = () => {
                 calendar: toSeasonCalendar(scoreboard),
                 loading: false,
             })
-            // An admin can move the lock time for the week; that override wins
-            // over the deadline derived from kickoff times. A failed read leaves
-            // the default in place rather than locking everyone out.
-            const settings = await getWeekSettings(makeWeekId(season, week)).catch(() => undefined)
-
-            // Only the deadline is set here. Whether it has passed is the effect
-            // below's job, so there is one place that decides it rather than two
-            // that can disagree.
-            setPickDeadline(getEffectiveDeadline(games, settings?.lockAt))
-
             // Week 1 has all 32 teams playing, so it is the one week that names
             // the whole league. Any later week costs a second request.
             setTeams(toTeamsKeyed(
@@ -127,6 +122,40 @@ const App = () => {
         }
         load().catch(console.error)
     }, [])
+
+    // The deadline follows the week rather than the page load. It used to be
+    // resolved once, beside the first scoreboard request, so a rollover left it
+    // pointing at the week that had just finished -- and the lock effect below,
+    // which is keyed on the deadline, never re-ran to notice.
+    //
+    // An admin can move the lock time for a week; that override wins over the
+    // deadline derived from kickoff times. A failed read leaves the default in
+    // place rather than locking everyone out. Only the deadline is set here:
+    // whether it has passed is the next effect's job, so one place decides it
+    // rather than two that can disagree.
+    //
+    // Keyed on the week id alone. The games are set in the same update as the id
+    // they belong to, so they are already the new week's by the time this runs,
+    // and keying on the array as well would re-read the week's settings on every
+    // score poll -- a Firestore read a minute, per open tab, for an answer that
+    // only changes when the week does.
+    useEffect(() => {
+        if (!currentWeek.weekId) {
+            return
+        }
+
+        let current = true
+
+        getWeekSettings(currentWeek.weekId)
+            .catch(() => undefined)
+            .then((settings) => {
+                if (current) {
+                    setPickDeadline(getEffectiveDeadline(currentWeek.games, settings?.lockAt))
+                }
+            })
+
+        return () => { current = false }
+    }, [currentWeek.weekId])
 
     // The lock used to be decided once, when the week loaded. A tab left open
     // across the deadline therefore kept the form live and kept saving picks --
@@ -167,6 +196,51 @@ const App = () => {
     // and stop the moment it doesn't -- so the other six days of the week cost
     // exactly one request, as before.
     const weekIsSettled = currentWeek.games.length > 0 && currentWeek.games.every(isFinal)
+
+    // ESPN's week pointer is not "the week in progress" -- it is a calendar
+    // window that runs on well past the last whistle. Week 1 of 2026 ends
+    // 2026-09-16T06:59Z, some 52 hours after that week's Monday night game, and
+    // until then the default scoreboard still answers "week 1". Waiting on it
+    // would keep picks locked for two days after the week they belong to was
+    // over, so the week rolls forward here the moment it is settled instead.
+    //
+    // One step per run, driven from state, so a tab left open rolls forward
+    // again at the end of the next week too rather than only on a reload. It
+    // stops at the first week with anything left to play -- in season, the very
+    // next one -- and never walks past the calendar's last week.
+    const nextWeek = currentWeek.calendar.weeks.find(
+        (entry) => entry.week === currentWeek.week + 1
+    )
+
+    useEffect(() => {
+        if (currentWeek.loading || !weekIsSettled || !nextWeek) {
+            return
+        }
+
+        let current = true
+
+        const advance = async () => {
+            const games = await getWeekMatchups(currentWeek.season, nextWeek.week)
+
+            // A week ESPN has no games for yet is not somewhere to strand the
+            // app: better the finished week than an empty one.
+            if (!current || !games.length) {
+                return
+            }
+
+            setCurrentWeek((state) => ({
+                ...state,
+                week: nextWeek.week,
+                weekId: makeWeekId(state.season, nextWeek.week),
+                games,
+            }))
+        }
+
+        advance().catch(console.error)
+
+        return () => { current = false }
+        // nextWeek.week covers currentWeek.week: the two move together.
+    }, [currentWeek.loading, currentWeek.season, weekIsSettled, nextWeek?.week])
 
     useEffect(() => {
         if (currentWeek.loading || !currentWeek.games.length || weekIsSettled) {
@@ -243,7 +317,7 @@ const App = () => {
                             <AppMenu onClose={closeMenus} />
                         ) : null}
                         {showProfileMenu && currentUser.user ? (
-                            <ProfileMenu onClose={closeMenus} />
+                            <ProfileMenu onClose={closeMenus} mode={theme.mode} onChooseMode={theme.chooseMode} />
                         ) : null}
                     </Shell>
                 </Grommet>

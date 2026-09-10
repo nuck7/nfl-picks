@@ -2,6 +2,11 @@ import { MenuOption, PaymentMethod, PaymentMethodOption, PicksForm } from './typ
 
 export const EspnRegularSeasonAbbreviation = 'reg';
 
+// What each player puts in for a week. The standings show the pot as this times
+// the number of entrants -- people sit weeks out, so it is who actually played,
+// not the size of the roster.
+export const WeeklyBuyIn = 5;
+
 export const DefaultAvatarImage = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
 
 export const AppMenuOptions = [

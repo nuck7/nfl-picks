@@ -16,7 +16,11 @@ export const Shell = styled.div`
 export const Main = styled.main<{ $wide?: boolean }>`
     flex: 1 1 auto;
     width: 100%;
-    max-width: ${({ $wide }) => ($wide ? layout.wideWidth : layout.maxWidth)};
+    /* A wide page takes the whole device. The standings is a grid whose width
+       is set by how many people are in the pool, and any cap here is width the
+       table has to make up for by scrolling sideways -- so it gets none, and
+       only the gutter stands between it and the screen edge. */
+    max-width: ${({ $wide }) => ($wide ? 'none' : layout.maxWidth)};
     margin: 0 auto;
     padding: ${space[10]} ${layout.gutter} ${space[16]};
 

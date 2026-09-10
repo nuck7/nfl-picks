@@ -57,6 +57,16 @@ const Profile = () => {
     const [error, setError] = useState<string>()
     const [notice, setNotice] = useState<string>()
 
+    // The player document is the authority on the display name, and the shared
+    // state can lag it -- a name set during sign-up, or an admin renaming you
+    // while you are signed in, both land in Firestore without the auth listener
+    // firing again. Re-reading on mount means this page always shows what is
+    // actually stored. Mount only, so it can never overwrite what is being
+    // typed into the field below.
+    useEffect(() => {
+        currentUser.refresh().catch(console.error)
+    }, [currentUser.refresh])
+
     useEffect(() => {
         if (currentUser.user) {
             setName(currentUser.user.name)
