@@ -124,7 +124,19 @@ export const grommetTheme: ThemeType = {
         primary: {
             background: color.action,
             border: { color: color.action, width: '1px' },
+            // `color` alone does NOT reach the label here. kindPartStyles
+            // (utils/styles.js) hands a kind's colour pair to backgroundStyle,
+            // which asks colorIsDark() what shade the background is so it can
+            // pick a label colour -- and colorIsDark() cannot parse a var().
+            // It answers undefined, backgroundStyle takes its "must be a
+            // gradient" branch, and the text colour is dropped on the floor.
+            // The label then inherits `ink` from the page: black on the black
+            // button in light mode, white on the white one in dark. extend is
+            // the one field kindPartStyles emits verbatim, and last, so it is
+            // what actually pins the label. `color` stays for the icon, which
+            // Button resolves separately via getIconColor().
             color: color.onAction,
+            extend: `color: ${color.onAction};`,
             font: { weight: font.medium },
         },
         secondary: {

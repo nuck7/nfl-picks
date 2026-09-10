@@ -51,6 +51,12 @@ export const formatGameTime = (date: string) =>
 
 // Groups a week's matchups into one section per calendar day, days in
 // chronological order and kickoffs ordered within each day.
+// Chronological, earliest first. An unparseable date sorts as NaN, which
+// compares false against everything and so leaves that game where it was rather
+// than throwing the rest of the order out.
+export const byKickoff = (a: Game, b: Game) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+
 export const groupMatchupsByDate = (matchups: Game[]): MatchupsByDate[] => {
     const sections = new Map<string, MatchupsByDate>()
 
@@ -64,9 +70,6 @@ export const groupMatchupsByDate = (matchups: Game[]): MatchupsByDate[] => {
             sections.set(key, { key, date: matchup.date, matchups: [matchup] })
         }
     }
-
-    const byKickoff = (a: Game, b: Game) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime()
 
     return [...sections.values()]
         .map((section) => ({

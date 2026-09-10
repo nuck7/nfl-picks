@@ -1,6 +1,6 @@
 import styled, { css } from "styled-components";
 import { BandInk, BandScrimRgb, Ink, Paper } from "../../utils/teamColors";
-import { color, font, radius, space, typeStyle } from "../../theme";
+import { color, font, media, radius, space, typeStyle } from "../../theme";
 
 export type MatchupSize = 'compact' | 'grid' | 'medium' | 'full'
 
@@ -68,6 +68,12 @@ export const MatchupHeadingContainer = styled.div<{
         color: ${BandInk};
         border-radius: ${radius.md};
         padding: ${scale[$size].pad};
+        /* The band is the box the row lives in, so nothing may draw outside it.
+           In a column narrow enough that even the abbreviations and the winner
+           mark don't fit, the grid overflows -- and an unclipped overflow put
+           the winner's tick out past the rounded corner, floating on the page
+           beside the band it belongs to. */
+        overflow: hidden;
     `}
 
     /* Colour is decoration; at forced-contrast the band goes flat and the
@@ -78,14 +84,17 @@ export const MatchupHeadingContainer = styled.div<{
     }
 `
 
-export const MatchupTeam = styled.div<{ $align: 'start' | 'end'; $lost?: boolean }>`
+export const MatchupTeam = styled.div<{ $align: 'start' | 'end'; $lost?: boolean; $size?: MatchupSize }>`
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: ${space[2]};
     justify-content: ${({ $align }) => ($align === 'end' ? 'flex-end' : 'flex-start')};
-    /* Without this a long name blows its 1fr track out instead of ellipsing. */
-    min-width: 0;
+    /* Without this a long name blows its 1fr track out instead of ellipsing.
+       The grid is the exception: it shows a three-letter code, which has no
+       useful truncation, so it keeps the content-based minimum and the table
+       column sizes itself to whatever the codes and logos actually need. */
+    min-width: ${({ $size }) => ($size === 'grid' ? 'auto' : '0')};
 
     /* The losing side loses saturation and weight as well as prominence.
        Neither cue is hue-based, so both survive every colour-vision
@@ -96,10 +105,28 @@ export const MatchupTeam = styled.div<{ $align: 'start' | 'end'; $lost?: boolean
     `}
 `
 
-export const MatchupTeamName = styled.span<{ $won?: boolean }>`
+export const MatchupTeamName = styled.span<{ $won?: boolean; $size?: MatchupSize }>`
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: ${({ $won }) => ($won ? font.medium : font.regular)};
+
+    /* The grid shows a code, not a name, and there is no honest way to ellipse
+       "WSH" -- "W..." is not a team. So it never shrinks: either the column is
+       wide enough for the whole code or, on a phone, the code goes away and the
+       logos carry the matchup on their own.
+
+       display:contents rather than none for that disappearance, so the box goes
+       with the text and takes the flex gap either side of it too; the
+       screen-reader name inside is absolutely positioned, so it survives losing
+       its parent's box. */
+    ${({ $size }) => $size === 'grid' && css`
+        flex: none;
+        overflow: visible;
+
+        ${media.upToMobile} {
+            display: contents;
+        }
+    `}
 `
 
 // ESPN's marks are transparent full-colour PNGs drawn to sit on white, so a
@@ -155,7 +182,15 @@ export const MatchupMeta = styled.div`
     opacity: 0.82;
 `
 
-export const WinnerMark = styled.span`
+// Holds the winner's badge against the corner of the winning logo. Only the
+// grid needs it -- everywhere else the mark can afford to stand beside the name.
+export const MatchupLogoStack = styled.span`
+    position: relative;
+    display: inline-flex;
+    flex: none;
+`
+
+export const WinnerMark = styled.span<{ $onLogo?: boolean; $side?: 'away' | 'home' }>`
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -165,6 +200,31 @@ export const WinnerMark = styled.span`
     border-radius: ${radius.circle};
     background: ${Paper};
     color: ${Ink};
+
+    /* In the standings column the mark rides on the corner of the winning logo
+       instead of standing beside it: absolutely positioned, so it costs the row
+       nothing, which is 26px of a phone's 200px column -- the widest thing on
+       that page that wasn't carrying information.
+       
+       Inverted (dark disc, white check) with a white ring, because here it lands
+       half on the logo's white chip and half on the team's colour, and neither
+       an all-white disc nor a bare dark one reads against both. Deliberately not
+       the pick cell's green: alongside a column of green ticks meaning "your
+       pick was right", a green tick here would look like it was saying the same
+       thing about a game you may well have got wrong.
+       
+       Pinned to the outer corner, mirroring by side, so it stays over its own
+       team rather than drifting towards the "@". */
+    ${({ $onLogo, $side }) => $onLogo && css`
+        position: absolute;
+        top: -4px;
+        ${$side === 'away' ? 'left' : 'right'}: -4px;
+        height: 16px;
+        width: 16px;
+        background: ${Ink};
+        color: ${Paper};
+        box-shadow: 0 0 0 2px ${Paper};
+    `}
 `
 
 // Used by Schedule for a game that is under way.

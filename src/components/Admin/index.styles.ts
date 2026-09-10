@@ -40,6 +40,23 @@ export const RoleLabel = styled.span`
     white-space: nowrap;
 `
 
+// Whether a player has an entry for the week the payments table is on. Three
+// states rather than a tick, because a half-finished entry is neither playing
+// nor sitting out -- it is the one case an admin has to judge for themselves,
+// so it shows the count instead of resolving it to a yes or a no.
+//
+// inkMuted for 'none' rather than inkFaint: this is 14px, and faint fails AA
+// below 19px. Receding is done by not being the green one.
+export const PickStatus = styled.span<{ $state: 'complete' | 'partial' | 'none' }>`
+    ${typeStyle('meta')}
+    white-space: nowrap;
+    color: ${({ $state }) => ({
+        complete: color.positive,
+        partial: color.ink,
+        none: color.inkMuted,
+    }[$state])};
+`
+
 export const SeedNote = styled.span`
     color: ${color.inkMuted};
     ${typeStyle('caption')}

@@ -18,3 +18,13 @@ export const ShortName = styled.span`
         display: inline;
     }
 `
+
+// The other direction: the code from the mobile breakpoint up, and nothing at
+// all below it. For the standings matchup column, where a phone has no room for
+// two names beside two logos -- the logos say which teams these are, and the
+// full name is still on the element for a screen reader.
+export const WideOnlyShortName = styled.span`
+    ${media.upToMobile} {
+        display: none;
+    }
+`

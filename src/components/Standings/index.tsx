@@ -1,17 +1,21 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { ColumnConfig, DataTable } from 'grommet';
-import { Checkmark, Close } from 'grommet-icons';
+import { ColumnConfig, DataTable, Select } from 'grommet';
+import { Checkmark, Close, FormDown, FormNext } from 'grommet-icons';
 import { getPicksForWeek } from '../../resources/firebase';
 import { getPlayers } from '../../resources/players';
 import { getWeekPayments, toPaymentsByPlayer } from '../../resources/payments';
 import {
-    CurrentUser, CurrentWeek, Outcome, PaymentMethod, Pick, PicksForm, Player,
-    StandingsPickCell, StandingsRow, Team, TeamsKeyed,
+    CurrentUser, CurrentWeek, DropdownOption, Game, Outcome, PaymentMethod, Pick,
+    PicksForm, Player, StandingsPickCell, StandingsRow, Team, TeamsKeyed,
 } from '../../types';
 import { CurrentUserContext, CurrentWeekContext, SubmitPicksContext, TeamsContext } from '../../App';
-import { PaymentMethodLabels } from '../../constants';
+import { PaymentMethodLabels, WeeklyBuyIn } from '../../constants';
 import { getMatchupId, getMatchupLabel, getTeamByHomeAway } from '../../utils/teams';
-import { findPickForMatchup, hasCompletePicks } from '../../utils/picks';
+import { canSubmitPicks, findPickForMatchup, hasCompletePicks } from '../../utils/picks';
+import { byKickoff } from '../../utils/schedule';
+import { getWeekMatchups } from '../../resources/espn';
+import { getWeekSettings } from '../../resources/weeks';
+import { makeWeekId } from '../../utils/espn';
 import {
     addOutcome, emptyRecord, formatRecord, getLeaders, getPickOutcome, Leader, WeekRecord,
 } from '../../utils/grading';
@@ -21,12 +25,23 @@ import MatchupHeading from '../MatchupHeading';
 import VisuallyHidden from '../VisuallyHidden';
 import { color } from '../../theme';
 import {
-    FooterStack, LeaderBanner, LeaderLabel, LeaderNames, LeaderRecord, NoPick,
+    FooterStack, LeaderList, LeaderToggle, MetaBar, MetaValue, NoPick,
     OutcomeBadge, PageHeader, PaymentBadge, PickLogo, PickTile, PlayerHeader,
-    PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue,
+    PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue, WeekSummary, WeekSelectContainer,
 } from './index.styles';
 
 type Column = ColumnConfig<StandingsRow>
+
+// One week as this page shows it: its games, the id its picks and payments are
+// stored under, and whether its picks have locked. The last one is per week and
+// not a property of "now" -- a finished week is locked however open the week in
+// play happens to be.
+type ViewedWeek = {
+    week: number
+    weekId: string
+    games: Game[]
+    locked: boolean
+}
 
 // Every player column is this wide, explicitly. Letting the content size them
 // meant each column was as wide as its own header, so the tile -- centred in
@@ -35,6 +50,18 @@ type Column = ColumnConfig<StandingsRow>
 // 76px header both fit inside this less the cell padding, so nothing stretches
 // it and the spacing is even by construction.
 const PlayerColumnWidth = '92px'
+
+// Above this many tied at the top, the names collapse to a count. Three fit on
+// one line at meta size even on a phone; four start wrapping, and a full pool
+// tied after the first Thursday game is what made the old banner unreadable.
+const MaxNamedLeaders = 3
+
+// "Alex" / "Alex and Sam" / "Alex, Sam and Jo". No Oxford comma: this runs
+// inline inside a sentence, where the extra comma reads as another name.
+const formatNames = (names: string[]) =>
+    names.length <= 1
+        ? names.join('')
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 
 // The single source for how an outcome is announced. Colour, tint and badge are
 // all decoration on top of this.
@@ -99,16 +126,99 @@ const PickCell: React.FC<{ cell?: StandingsPickCell }> = ({ cell }) => {
 const Standings = () => {
     const teams = useContext<TeamsKeyed>(TeamsContext)
     const currentUser = useContext<CurrentUser>(CurrentUserContext)
-    // The week and its games are resolved once in App.
-    const { games: matchups, season, week, weekId } = useContext<CurrentWeek>(CurrentWeekContext)
-    // The week is locked once picks can no longer be submitted. App leaves this
-    // true when it has no deadline to go on, so an unknown deadline reads as
-    // "not locked yet" and keeps everyone else's picks hidden -- the same way
-    // the rules treat an unseeded week.
-    const picksAreLocked = !useContext(SubmitPicksContext)
+    // The week the pool is playing, resolved once in App. Since the week now
+    // rolls over the moment its last game ends, this is where the page opens
+    // rather than the only week it can show -- a finished week stays readable.
+    const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
+    const { calendar, season } = currentWeek
+    // The CURRENT week is locked once picks can no longer be submitted. App
+    // leaves this true when it has no deadline to go on, so an unknown deadline
+    // reads as "not locked yet" and keeps everyone else's picks hidden -- the
+    // same way the rules treat an unseeded week.
+    const currentWeekIsLocked = !useContext(SubmitPicksContext)
+    const [selectedWeek, setSelectedWeek] = useState<DropdownOption>()
+    const [otherWeek, setOtherWeek] = useState<ViewedWeek>()
     const [userPicks, setUserPicks] = useState<PicksForm[]>([])
     const [players, setPlayers] = useState<Player[]>([])
     const [payments, setPayments] = useState<Record<string, PaymentMethod>>({})
+    // Only ever consulted for a tie too wide to name inline, so it needs no
+    // reset when the week changes: the toggle that sets it isn't rendered
+    // unless there is something behind it.
+    const [showLeaders, setShowLeaders] = useState(false)
+
+    const weekOptions: DropdownOption[] = calendar.weeks.map((entry) => ({
+        label: entry.label,
+        value: entry.week,
+    }))
+
+    // Opens on the week in play -- but only while nothing has been chosen yet.
+    // Once a week is showing, this default included, a rollover mid-read must
+    // not yank the page off the table someone is reading.
+    useEffect(() => {
+        if (currentWeek.loading || selectedWeek || !weekOptions.length) {
+            return
+        }
+
+        setSelectedWeek(
+            weekOptions.find((option) => option.value === currentWeek.week) ?? weekOptions[0]
+        )
+    }, [currentWeek.loading, currentWeek.week, selectedWeek, weekOptions])
+
+    const viewedWeek = selectedWeek?.value ?? currentWeek.week
+    const isCurrentWeek = viewedWeek === currentWeek.week
+
+    // Any other week has to be fetched, and so does its own lock time. Whether
+    // the pool's picks may be shown is a per-week question: answering it with
+    // the current week's lock would either hide a finished week's grid or ask
+    // Firestore for a future week's picks and be refused.
+    useEffect(() => {
+        if (isCurrentWeek || !viewedWeek || !season) {
+            return
+        }
+
+        let current = true
+        const weekId = makeWeekId(season, viewedWeek)
+
+        const load = async () => {
+            const [games, settings] = await Promise.all([
+                getWeekMatchups(season, viewedWeek),
+                getWeekSettings(weekId).catch(() => undefined),
+            ])
+
+            if (current) {
+                setOtherWeek({
+                    week: viewedWeek,
+                    weekId,
+                    games,
+                    locked: !canSubmitPicks(games, Date.now(), settings?.lockAt),
+                })
+            }
+        }
+
+        load().catch(console.error)
+
+        return () => { current = false }
+    }, [isCurrentWeek, viewedWeek, season])
+
+    // Undefined for the moment between choosing a week and its games landing,
+    // which the table reads as "nothing to draw yet" rather than drawing the
+    // previous week's grid under the new week's heading.
+    const viewing: ViewedWeek | undefined = isCurrentWeek
+        ? {
+            week: currentWeek.week,
+            weekId: currentWeek.weekId,
+            games: currentWeek.games,
+            locked: currentWeekIsLocked,
+        }
+        : otherWeek?.week === viewedWeek ? otherWeek : undefined
+
+    const matchups = viewing?.games ?? []
+    const weekId = viewing?.weekId ?? ''
+    const picksAreLocked = viewing?.locked ?? true
+    // Whether this viewer can see the whole week. Before the lock the rules
+    // refuse a member anyone else's picks, so their answer to "who entered" is
+    // only ever themselves -- which is why the pot below waits for this.
+    const canSeeEveryone = currentUser.isAdmin || picksAreLocked
 
     useEffect(() => {
         // Columns come from the roster, not from who happens to have submitted --
@@ -139,20 +249,25 @@ const Standings = () => {
             // so fetching everything would fail outright.
             const userPicks: PicksForm[] = await getPicksForWeek(weekId, {
                 playerId: currentUser.user?.id,
-                canSeeEveryone: currentUser.isAdmin || picksAreLocked,
+                canSeeEveryone,
             })
             setUserPicks(userPicks)
         }
         // Firestore can reject (expired rules, offline). Demo mode should still
         // render, so swallow the failure and leave the real picks empty.
         fetchPicks().catch(console.error)
-    }, [weekId, currentUser.isAdmin, currentUser.user?.id, picksAreLocked])
+    }, [weekId, canSeeEveryone, currentUser.user?.id])
 
     // teams must be a dependency: App loads it with 32 sequential ESPN requests,
     // so it always resolves after the matchups and picks do.
-    const { columns, rows, leaders } = useMemo(() => {
+    const { columns, rows, leaders, entrantCount } = useMemo(() => {
         if (!matchups.length || !Object.keys(teams).length) {
-            return { columns: [] as Column[], rows: [] as StandingsRow[], leaders: [] as Leader[] }
+            return {
+                columns: [] as Column[],
+                rows: [] as StandingsRow[],
+                leaders: [] as Leader[],
+                entrantCount: 0,
+            }
         }
 
         // One entry per player, carrying their picks when they have some. Anyone
@@ -180,14 +295,21 @@ const Standings = () => {
             ? [...entrants, ...makeDemoPicks(matchups, weekId)]
             : entrants
 
+        // ESPN returns a week's events in no order the app can rely on, so the
+        // rows are put in kickoff order here rather than inheriting it. The
+        // schedule and the pick form get the same order from
+        // groupMatchupsByDate, which sorts with this same comparator -- so all
+        // three pages list a week's games the same way round.
+        const orderedMatchups = [...matchups].sort(byKickoff)
+
         // Keyed by matchup id so the Matchups column can render the same banded
         // heading the schedule page uses.
-        const matchupsById = new Map(matchups.map((matchup) => [getMatchupId(matchup), matchup]))
+        const matchupsById = new Map(orderedMatchups.map((matchup) => [getMatchupId(matchup), matchup]))
 
         const records = new Map<string, WeekRecord>()
         const rowData: StandingsRow[] = []
 
-        matchups.forEach((matchup) => {
+        orderedMatchups.forEach((matchup) => {
             const homeTeam = getTeamByHomeAway(teams, matchup, 'home')
             const awayTeam = getTeamByHomeAway(teams, matchup, 'away')
 
@@ -309,46 +431,113 @@ const Standings = () => {
                 record: records.get(participant.user_id) ?? emptyRecord(),
             })))
 
-        return { columns, rows: rowData, leaders }
+        // The same list the columns are built from, so the pot can never name a
+        // number of players the grid doesn't show.
+        return { columns, rows: rowData, leaders, entrantCount: participants.length }
     }, [matchups, userPicks, players, teams, weekId, payments, currentUser.isAdmin])
+
+    // Only once the viewer can see the whole week -- see the summary below.
+    const showPot = canSeeEveryone && entrantCount > 0
 
     return (
         <div>
             <PageHeader>
                 <h1>
-                    {week ? `${season} Week ${week} Standings` : 'Standings'}
+                    {viewedWeek ? `${season} Week ${viewedWeek} Standings` : 'Standings'}
                 </h1>
                 {currentUser.isAdmin ? (
                     <PrintLink to='/standings/print'>Print picks sheet</PrintLink>
                 ) : null}
             </PageHeader>
 
-            {/* Absent rather than empty until a game has been decided: there is
-                no leader in a week nobody has played yet. */}
-            {leaders.length ? (
-                <LeaderBanner>
-                    <LeaderLabel>
-                        {leaders.length > 1 ? 'Leaders' : 'Leader'}
-                    </LeaderLabel>
-                    <LeaderNames>
-                        {leaders.map((leader) => leader.name).join(', ')}
-                    </LeaderNames>
-                    <LeaderRecord>
-                        {/* Leaders are tied on correct picks only -- their full
-                            records can still differ, so a shared lead reports
-                            the one number they actually share. */}
-                        {leaders.length > 1
-                            ? `${leaders[0].record.correct} correct`
-                            : (
-                                <>
-                                    {formatRecord(leaders[0].record)}
-                                    <VisuallyHidden>
-                                        {` — ${leaders[0].record.correct} correct`}
-                                    </VisuallyHidden>
-                                </>
-                            )}
-                    </LeaderRecord>
-                </LeaderBanner>
+            {/* The heading already names the week, so this is the control that
+                changes it rather than the only thing saying which week it is. */}
+            <WeekSelectContainer>
+                <Select
+                    id='standings_week'
+                    name='week'
+                    placeholder='Select a week'
+                    options={weekOptions}
+                    value={selectedWeek}
+                    disabled={!weekOptions.length}
+                    onChange={({ option }) => setSelectedWeek(option)}
+                    labelKey='label'
+                    valueKey='value'
+                />
+            </WeekSelectContainer>
+
+            {/* One line for the whole week: the pot, the field, and who is
+                ahead. See WeekSummary in index.styles for why the leaders no
+                longer get a banner of their own.
+
+                The pot is counted off the entrants rather than the roster --
+                people sit weeks out, and there is nothing in the pot for a week
+                they didn't play. It is held back until the viewer can see the
+                whole week: before the lock a member is served only their own
+                picks, so counting what they can see would tell everybody the
+                pot was $5, and nothing beats a confident wrong number. */}
+            {showPot || leaders.length ? (
+                <WeekSummary>
+                    <MetaBar>
+                        {showPot ? (
+                            <>
+                                <MetaValue title={`${entrantCount} × $${WeeklyBuyIn} buy-in`}>
+                                    {`$${entrantCount * WeeklyBuyIn}`}
+                                </MetaValue>
+                                {` pot \u00b7 ${entrantCount} ${entrantCount === 1 ? 'player' : 'players'}`}
+                            </>
+                        ) : null}
+
+                        {showPot && leaders.length ? ' \u00b7 ' : null}
+
+                        {/* Three shapes, narrowing as the week does. One leader
+                            is named with their full record; a small tie is named
+                            without one, since a shared lead is shared on correct
+                            picks only and their other columns can differ; a wide
+                            tie is a count until asked. */}
+                        {leaders.length === 1 ? (
+                            <>
+                                {'Leader '}
+                                <MetaValue>{leaders[0].name}</MetaValue>
+                                {' '}
+                                {formatRecord(leaders[0].record)}
+                                <VisuallyHidden>
+                                    {` — ${leaders[0].record.correct} correct`}
+                                </VisuallyHidden>
+                            </>
+                        ) : null}
+
+                        {leaders.length > 1 && leaders.length <= MaxNamedLeaders ? (
+                            <>
+                                <MetaValue>{formatNames(leaders.map((leader) => leader.name))}</MetaValue>
+                                {` tied at ${leaders[0].record.correct} correct`}
+                            </>
+                        ) : null}
+
+                        {leaders.length > MaxNamedLeaders ? (
+                            <LeaderToggle
+                                type='button'
+                                aria-expanded={showLeaders}
+                                aria-controls='standings_leaders'
+                                onClick={() => setShowLeaders((shown) => !shown)}
+                            >
+                                {`${leaders.length} tied at ${leaders[0].record.correct} correct`}
+                                {showLeaders
+                                    ? <FormDown size='16px' color='currentColor' />
+                                    : <FormNext size='16px' color='currentColor' />}
+                            </LeaderToggle>
+                        ) : null}
+                    </MetaBar>
+
+                    {/* Rendered only when open rather than hidden with CSS: the
+                        toggle is the only thing that can open it, and it isn't
+                        rendered below the threshold. */}
+                    {leaders.length > MaxNamedLeaders && showLeaders ? (
+                        <LeaderList id='standings_leaders'>
+                            {formatNames(leaders.map((leader) => leader.name))}
+                        </LeaderList>
+                    ) : null}
+                </WeekSummary>
             ) : null}
 
             <TableScroll>

@@ -3,7 +3,7 @@ import { Form, Select, TextInput } from 'grommet';
 import { Checkmark } from 'grommet-icons';
 import { createEmptyPickFormState } from '../../constants';
 import { getPicksForPlayer, savePicks } from '../../resources/firebase';
-import { getPlayers } from '../../resources/players';
+import { getPlayers, sortPlayersByName } from '../../resources/players';
 import { CurrentUser, CurrentWeek, Game, GameTeam, PicksForm, Player, TeamsKeyed } from '../../types';
 import { CurrentUserContext, CurrentWeekContext, PickDeadlineContext, SubmitPicksContext, TeamsContext } from '../../App';
 import { getMatchupId } from '../../utils/teams';
@@ -43,6 +43,10 @@ const PicksForm = () => {
     // admin switches it.
     const [targetPlayer, setTargetPlayer] = useState<Player>();
     const [players, setPlayers] = useState<Player[]>([]);
+    // Alphabetical, so an admin entering someone's picks can find the name by
+    // scanning rather than reading the whole list. Memoised so the Select isn't
+    // handed a new options array on every keystroke in the form below it.
+    const playerOptions = useMemo(() => sortPlayersByName(players), [players]);
     const [formState, setFormState] = useState(createEmptyPickFormState);
     const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
 
@@ -257,7 +261,7 @@ const PicksForm = () => {
                     <Select
                         id='pick_player'
                         name='player'
-                        options={players}
+                        options={playerOptions}
                         value={targetPlayer}
                         labelKey='name'
                         valueKey={{ key: 'id', reduce: false }}

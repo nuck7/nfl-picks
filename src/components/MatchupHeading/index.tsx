@@ -9,6 +9,7 @@ import TeamName from '../TeamName';
 import {
     MatchupCentre,
     MatchupHeadingContainer,
+    MatchupLogoStack,
     MatchupMeta,
     MatchupSeparator,
     MatchupTeam,
@@ -71,9 +72,11 @@ const MatchupHeading: React.FC<Props> = ({
         size === 'full' ? BandContrast.regular : BandContrast.compact
     )
 
-    // The standings column abbreviates at every width; the pick form only does
-    // so on a phone. Everywhere else has room for the real name.
-    const abbreviateWhen = size === 'grid' ? 'always'
+    // The standings column abbreviates at every width, and on a phone drops the
+    // name altogether -- one pinned column can't hold two names, two logos and
+    // still leave the pick columns anything. The pick form only abbreviates on a
+    // phone. Everywhere else has room for the real name.
+    const abbreviateWhen = size === 'grid' ? 'fromMobile'
         : abbreviateOnMobile ? 'mobile'
         : undefined
 
@@ -88,17 +91,39 @@ const MatchupHeading: React.FC<Props> = ({
         : winner === 'home' ? 100 - WinnerSplit
         : EvenSplit
 
-    const renderLogo = (team?: Team) =>
-        team?.logo ? <MatchupTeamLogo $size={size} src={team.logo} alt="" /> : null
-
-    const awayLogo = renderLogo(awayTeam)
-
-    const winnerMark = (
-        <WinnerMark>
-            <Checkmark size='12px' color='currentColor' />
+    const winnerMark = (props?: { onLogo: boolean; side: 'away' | 'home' }) => (
+        <WinnerMark $onLogo={props?.onLogo} $side={props?.side}>
+            <Checkmark size={props?.onLogo ? '10px' : '12px'} color='currentColor' />
             <VisuallyHidden>Winner</VisuallyHidden>
         </WinnerMark>
     )
+
+    // The standings column has no width to spare, so its mark sits on the logo.
+    // Everywhere else it stands beside the name, where there is room for it.
+    const markOnLogo = size === 'grid'
+
+    const renderLogo = (team: Team | undefined, side: 'away' | 'home') => {
+        if (!team?.logo) {
+            return null
+        }
+        const logo = <MatchupTeamLogo $size={size} src={team.logo} alt="" />
+
+        return markOnLogo && winner === side ? (
+            <MatchupLogoStack>
+                {logo}
+                {winnerMark({ onLogo: true, side })}
+            </MatchupLogoStack>
+        ) : logo
+    }
+
+    // Beside the name whenever the badge has nowhere to ride -- either because
+    // this size keeps its mark inline, or because ESPN gave us no logo to put it
+    // on. Without the second case a winner would go unmarked while TeamsContext
+    // is still loading.
+    const standaloneMark = (side: 'away' | 'home', team?: Team) =>
+        winner === side && (!markOnLogo || !team?.logo)
+            ? winnerMark()
+            : null
 
     return (
         <MatchupHeadingContainer
@@ -111,16 +136,20 @@ const MatchupHeading: React.FC<Props> = ({
             <MatchupTeam
                 $align={leadingLogos ? 'start' : 'end'}
                 $lost={Boolean(winner) && winner !== 'away'}
+                $size={size}
             >
-                {leadingLogos ? awayLogo : null}
-                <MatchupTeamName $won={winner === 'away'}>
+                {/* Outer edge, mirroring the home side's -- the two marks sit
+                    at the ends of the band rather than one of them next to the
+                    "@", which read as if it belonged to the wrong team. */}
+                {standaloneMark('away', awayTeam)}
+                {leadingLogos ? renderLogo(awayTeam, 'away') : null}
+                <MatchupTeamName $won={winner === 'away'} $size={size}>
                     {renderName(
                         awayTeam?.displayName ?? game.away.displayName,
                         awayTeam?.abbreviation ?? game.away.abbreviation
                     )}
                 </MatchupTeamName>
-                {leadingLogos ? null : awayLogo}
-                {winner === 'away' ? winnerMark : null}
+                {leadingLogos ? null : renderLogo(awayTeam, 'away')}
             </MatchupTeam>
 
             <MatchupCentre>
@@ -128,15 +157,15 @@ const MatchupHeading: React.FC<Props> = ({
                 {meta ? <MatchupMeta>{meta}</MatchupMeta> : null}
             </MatchupCentre>
 
-            <MatchupTeam $align='start' $lost={Boolean(winner) && winner !== 'home'}>
-                {renderLogo(homeTeam)}
-                <MatchupTeamName $won={winner === 'home'}>
+            <MatchupTeam $align='start' $lost={Boolean(winner) && winner !== 'home'} $size={size}>
+                {renderLogo(homeTeam, 'home')}
+                <MatchupTeamName $won={winner === 'home'} $size={size}>
                     {renderName(
                         homeTeam?.displayName ?? game.home.displayName,
                         homeTeam?.abbreviation ?? game.home.abbreviation
                     )}
                 </MatchupTeamName>
-                {winner === 'home' ? winnerMark : null}
+                {standaloneMark('home', homeTeam)}
             </MatchupTeam>
         </MatchupHeadingContainer>
     )

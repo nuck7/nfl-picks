@@ -4,7 +4,7 @@ import { addDoc, collection, doc, getDoc, getDocs, setDoc } from 'firebase/fires
 
 import { CurrentUser, Player, UserRole } from '../types';
 import { isAdmin } from '../utils/admin';
-import { isValidEmail } from '../utils/validation';
+import { isValidEmail, normalizeEmail } from '../utils/validation';
 import { auth, db } from './firebase.config';
 
 const PlayersCollection = 'players';
@@ -23,6 +23,46 @@ export const resolvePlayerName = (
   firebaseUser.displayName?.trim() ||
   firebaseUser.email?.split('@')[0]?.trim() ||
   FallbackName;
+
+// Alphabetical by display name, for the pickers that offer a player to choose:
+// the two dropdowns and the payments table. localeCompare with sensitivity
+// 'base' so casing and accents don't split names apart -- "alice" belongs next
+// to "Alice", not at the other end of the list.
+//
+// Deliberately NOT folded into getPlayers. The standings and the print sheet
+// take their column order from that same array, and reordering those is a
+// different decision from ordering a dropdown.
+//
+// Returns a copy: every caller holds its array in state, so sorting in place
+// would mutate it behind React's back.
+export const sortPlayersByName = (players: Player[]): Player[] =>
+  [...players].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+// An admin typing in an email the pool already holds. Distinct from a write
+// failing, so the admin page can say which player has it rather than blaming
+// the Firestore rules. Only addManagedPlayer raises this -- accounts people
+// create for themselves are Firebase's business, and its account linking
+// already keeps one email to one account there.
+export class DuplicateEmailError extends Error {
+  constructor(readonly existing: Player) {
+    super(`${existing.name} is already in the pool with that email.`);
+    this.name = 'DuplicateEmailError';
+  }
+}
+
+// The whole collection, filtered here, rather than a where('email','==')
+// query. Firestore compares strings exactly, so a query would miss the
+// Bob@x.com stored against the bob@x.com being typed in -- and that is
+// precisely the duplicate this exists to catch. A pool is a dozen or so small
+// documents, and this runs only when an admin submits the add-player form.
+const findPlayerByEmail = async (email: string): Promise<Player | undefined> => {
+  const normalized = normalizeEmail(email);
+
+  return (await getPlayers()).find(
+    (player) => normalizeEmail(player.email) === normalized
+  );
+};
 
 export const getPlayers = async (): Promise<Player[]> => {
   const snapshot = await getDocs(collection(db, PlayersCollection));
@@ -85,6 +125,14 @@ export const addManagedPlayer = async ({
 
   if (!isValidEmail(trimmedEmail)) {
     throw new Error('A player needs a valid email.');
+  }
+
+  // Both kinds of player count: adding a managed row for someone who already
+  // signed in for themselves is the same duplicate as adding the row twice.
+  const clash = await findPlayerByEmail(trimmedEmail);
+
+  if (clash) {
+    throw new DuplicateEmailError(clash);
   }
 
   const record = {

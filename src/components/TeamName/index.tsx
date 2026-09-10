@@ -1,6 +1,6 @@
 import React from 'react';
 import VisuallyHidden from '../VisuallyHidden';
-import { FullName, ShortName } from './index.styles';
+import { FullName, ShortName, WideOnlyShortName } from './index.styles';
 
 interface Props {
     full: string;
@@ -8,9 +8,11 @@ interface Props {
     // in which case there is nothing to shorten to and the full name stands.
     abbreviation?: string;
     // 'mobile' shows the code only below the mobile breakpoint; 'always' shows
-    // it at every width. Both keep the full name as the accessible name, so a
-    // screen reader never has to decode "NE".
-    when?: 'always' | 'mobile';
+    // it at every width; 'fromMobile' shows it from that breakpoint up and
+    // nothing below, for a column too narrow on a phone to spare the width. All
+    // three keep the full name as the accessible name, so a screen reader never
+    // has to decode "NE".
+    when?: 'always' | 'mobile' | 'fromMobile';
 }
 
 // A team name that shortens instead of truncating. An ellipsis tells you a name
@@ -22,10 +24,12 @@ const TeamName: React.FC<Props> = ({ full, abbreviation, when = 'mobile' }) => {
         return <>{full}</>
     }
 
-    if (when === 'always') {
+    if (when === 'always' || when === 'fromMobile') {
+        const Code = when === 'always' ? 'span' : WideOnlyShortName
+
         return (
             <>
-                <span aria-hidden='true'>{abbreviation}</span>
+                <Code aria-hidden='true'>{abbreviation}</Code>
                 <VisuallyHidden>{full}</VisuallyHidden>
             </>
         )
