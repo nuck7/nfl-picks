@@ -20,7 +20,7 @@
     "mini-css-extract-plugin": "^2.10.2",
     "styled-components": "^6.5.3",
     "ts-loader": "^9.6.2",
-    "typescript": "5.9.3",
+    "typescript": "^5.9.3",
     "webpack": "^5.110.3",
     "webpack-cli": "^7.2.3",
     "webpack-dev-server": "^6.0.0"
