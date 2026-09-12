@@ -25,9 +25,9 @@ import MatchupHeading from '../MatchupHeading';
 import VisuallyHidden from '../VisuallyHidden';
 import { color } from '../../theme';
 import {
-    FooterStack, LeaderList, LeaderToggle, MetaBar, MetaValue, NoPick,
+    FooterStack, HeaderMeta, HeaderMetaLine, LeaderList, LeaderToggle, MetaValue, NoPick,
     OutcomeBadge, PageHeader, PaymentBadge, PickLogo, PickTile, PlayerHeader,
-    PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue, WeekSummary, WeekSelectContainer,
+    PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue, WeekSelectContainer,
 } from './index.styles';
 
 type Column = ColumnConfig<StandingsRow>
@@ -445,8 +445,85 @@ const Standings = () => {
                 <h1>
                     {viewedWeek ? `${season} Week ${viewedWeek} Standings` : 'Standings'}
                 </h1>
-                {currentUser.isAdmin ? (
-                    <PrintLink to='/standings/print'>Print picks sheet</PrintLink>
+                {/* Everything about the week that is not the grid, beside the
+                    heading rather than stacked under it: what is in the pot,
+                    how many are playing for it, and who is ahead.
+
+                    The pot is counted off the entrants rather than the roster
+                    -- people sit weeks out, and there is nothing in the pot for
+                    a week they didn't play. It is held back until the viewer
+                    can see the whole week: before the lock a member is served
+                    only their own picks, so counting what they can see would
+                    tell everybody the pot was $5, and nothing beats a confident
+                    wrong number. */}
+                {currentUser.isAdmin || showPot || leaders.length ? (
+                    <HeaderMeta>
+                        {currentUser.isAdmin ? (
+                            <PrintLink to='/standings/print'>Print picks sheet</PrintLink>
+                        ) : null}
+
+                        {showPot || leaders.length ? (
+                            <HeaderMetaLine>
+                                {showPot ? (
+                                    <>
+                                        <MetaValue title={`${entrantCount} × $${WeeklyBuyIn} buy-in`}>
+                                            {`$${entrantCount * WeeklyBuyIn}`}
+                                        </MetaValue>
+                                        {` pot \u00b7 ${entrantCount} ${entrantCount === 1 ? 'player' : 'players'}`}
+                                    </>
+                                ) : null}
+
+                                {showPot && leaders.length ? ' \u00b7 ' : null}
+
+                                {/* Three shapes, narrowing as the week does. One leader
+                                    is named with their full record; a small tie is named
+                                    without one, since a shared lead is shared on correct
+                                    picks only and their other columns can differ; a wide
+                                    tie is a count until asked. */}
+                                {leaders.length === 1 ? (
+                                    <>
+                                        {'Leader '}
+                                        <MetaValue>{leaders[0].name}</MetaValue>
+                                        {' '}
+                                        {formatRecord(leaders[0].record)}
+                                        <VisuallyHidden>
+                                            {` — ${leaders[0].record.correct} correct`}
+                                        </VisuallyHidden>
+                                    </>
+                                ) : null}
+
+                                {leaders.length > 1 && leaders.length <= MaxNamedLeaders ? (
+                                    <>
+                                        <MetaValue>{formatNames(leaders.map((leader) => leader.name))}</MetaValue>
+                                        {` tied at ${leaders[0].record.correct} correct`}
+                                    </>
+                                ) : null}
+
+                                {leaders.length > MaxNamedLeaders ? (
+                                    <LeaderToggle
+                                        type='button'
+                                        aria-expanded={showLeaders}
+                                        aria-controls='standings_leaders'
+                                        onClick={() => setShowLeaders((shown) => !shown)}
+                                    >
+                                        {`${leaders.length} tied at ${leaders[0].record.correct} correct`}
+                                        {showLeaders
+                                            ? <FormDown size='16px' color='currentColor' />
+                                            : <FormNext size='16px' color='currentColor' />}
+                                    </LeaderToggle>
+                                ) : null}
+                            </HeaderMetaLine>
+                        ) : null}
+
+                        {/* Rendered only when open rather than hidden with CSS:
+                            the toggle is the only thing that can open it, and it
+                            isn't rendered below the threshold. */}
+                        {leaders.length > MaxNamedLeaders && showLeaders ? (
+                            <LeaderList id='standings_leaders'>
+                                {formatNames(leaders.map((leader) => leader.name))}
+                            </LeaderList>
+                        ) : null}
+                    </HeaderMeta>
                 ) : null}
             </PageHeader>
 
@@ -465,80 +542,6 @@ const Standings = () => {
                     valueKey='value'
                 />
             </WeekSelectContainer>
-
-            {/* One line for the whole week: the pot, the field, and who is
-                ahead. See WeekSummary in index.styles for why the leaders no
-                longer get a banner of their own.
-
-                The pot is counted off the entrants rather than the roster --
-                people sit weeks out, and there is nothing in the pot for a week
-                they didn't play. It is held back until the viewer can see the
-                whole week: before the lock a member is served only their own
-                picks, so counting what they can see would tell everybody the
-                pot was $5, and nothing beats a confident wrong number. */}
-            {showPot || leaders.length ? (
-                <WeekSummary>
-                    <MetaBar>
-                        {showPot ? (
-                            <>
-                                <MetaValue title={`${entrantCount} × $${WeeklyBuyIn} buy-in`}>
-                                    {`$${entrantCount * WeeklyBuyIn}`}
-                                </MetaValue>
-                                {` pot \u00b7 ${entrantCount} ${entrantCount === 1 ? 'player' : 'players'}`}
-                            </>
-                        ) : null}
-
-                        {showPot && leaders.length ? ' \u00b7 ' : null}
-
-                        {/* Three shapes, narrowing as the week does. One leader
-                            is named with their full record; a small tie is named
-                            without one, since a shared lead is shared on correct
-                            picks only and their other columns can differ; a wide
-                            tie is a count until asked. */}
-                        {leaders.length === 1 ? (
-                            <>
-                                {'Leader '}
-                                <MetaValue>{leaders[0].name}</MetaValue>
-                                {' '}
-                                {formatRecord(leaders[0].record)}
-                                <VisuallyHidden>
-                                    {` — ${leaders[0].record.correct} correct`}
-                                </VisuallyHidden>
-                            </>
-                        ) : null}
-
-                        {leaders.length > 1 && leaders.length <= MaxNamedLeaders ? (
-                            <>
-                                <MetaValue>{formatNames(leaders.map((leader) => leader.name))}</MetaValue>
-                                {` tied at ${leaders[0].record.correct} correct`}
-                            </>
-                        ) : null}
-
-                        {leaders.length > MaxNamedLeaders ? (
-                            <LeaderToggle
-                                type='button'
-                                aria-expanded={showLeaders}
-                                aria-controls='standings_leaders'
-                                onClick={() => setShowLeaders((shown) => !shown)}
-                            >
-                                {`${leaders.length} tied at ${leaders[0].record.correct} correct`}
-                                {showLeaders
-                                    ? <FormDown size='16px' color='currentColor' />
-                                    : <FormNext size='16px' color='currentColor' />}
-                            </LeaderToggle>
-                        ) : null}
-                    </MetaBar>
-
-                    {/* Rendered only when open rather than hidden with CSS: the
-                        toggle is the only thing that can open it, and it isn't
-                        rendered below the threshold. */}
-                    {leaders.length > MaxNamedLeaders && showLeaders ? (
-                        <LeaderList id='standings_leaders'>
-                            {formatNames(leaders.map((leader) => leader.name))}
-                        </LeaderList>
-                    ) : null}
-                </WeekSummary>
-            ) : null}
 
             <TableScroll>
                 <DataTable
