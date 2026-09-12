@@ -9,12 +9,18 @@
         "esnext"
       ],
       "strict": true,
+      // Opt out of TypeScript's implicit "include every node_modules/@types/*
+      // package as a global type library" behaviour. Explicit imports still
+      // resolve normally; this only stops transitive @types from leaking into
+      // global scope, which made the build depend on hoisting layout --
+      // @types/nodemon is a deprecated stub with no .d.ts in it, and it broke
+      // the build the moment the package manager hoisted it to the root.
+      "types": [],
       "sourceMap": true,
       "target": "esnext"
     },
     "exclude": [
       "node_modules",
-      "backend",
       "dist"
     ]
   }

@@ -110,3 +110,16 @@ dist
 firebase.config.ts
 .firebase
 .firebaserc
+
+# Yarn 4 (Berry). The release binary is not vendored: package.json's
+# `packageManager` field pins the version and Corepack fetches it, so only
+# Yarn's own local state needs ignoring. The negations are the upstream
+# recommendation -- they keep patches/plugins/releases committable if this
+# project ever needs them.
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
