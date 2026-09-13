@@ -25,7 +25,7 @@ import MatchupHeading from '../MatchupHeading';
 import VisuallyHidden from '../VisuallyHidden';
 import { color } from '../../theme';
 import {
-    FooterStack, HeaderMeta, HeaderMetaLine, LeaderList, LeaderToggle, MetaValue, NoPick,
+    FooterStack, HeaderMeta, HeaderMetaLine, HeaderTitle, LeaderList, LeaderToggle, MetaValue, NoPick,
     OutcomeBadge, PageHeader, PaymentBadge, PickLogo, PickTile, PlayerHeader,
     PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue, WeekSelectContainer,
 } from './index.styles';
@@ -442,9 +442,29 @@ const Standings = () => {
     return (
         <div>
             <PageHeader>
-                <h1>
-                    {viewedWeek ? `${season} Week ${viewedWeek} Standings` : 'Standings'}
-                </h1>
+                <HeaderTitle>
+                    <h1>
+                        {viewedWeek ? `${season} Week ${viewedWeek} Standings` : 'Standings'}
+                    </h1>
+
+                    {/* The heading already names the week, so this is the
+                        control that changes it rather than the only thing
+                        saying which week it is -- which is why it belongs
+                        beside the heading and not on a row of its own. */}
+                    <WeekSelectContainer>
+                        <Select
+                            id='standings_week'
+                            name='week'
+                            placeholder='Select a week'
+                            options={weekOptions}
+                            value={selectedWeek}
+                            disabled={!weekOptions.length}
+                            onChange={({ option }) => setSelectedWeek(option)}
+                            labelKey='label'
+                            valueKey='value'
+                        />
+                    </WeekSelectContainer>
+                </HeaderTitle>
                 {/* Everything about the week that is not the grid, beside the
                     heading rather than stacked under it: what is in the pot,
                     how many are playing for it, and who is ahead.
@@ -526,22 +546,6 @@ const Standings = () => {
                     </HeaderMeta>
                 ) : null}
             </PageHeader>
-
-            {/* The heading already names the week, so this is the control that
-                changes it rather than the only thing saying which week it is. */}
-            <WeekSelectContainer>
-                <Select
-                    id='standings_week'
-                    name='week'
-                    placeholder='Select a week'
-                    options={weekOptions}
-                    value={selectedWeek}
-                    disabled={!weekOptions.length}
-                    onChange={({ option }) => setSelectedWeek(option)}
-                    labelKey='label'
-                    valueKey='value'
-                />
-            </WeekSelectContainer>
 
             <TableScroll>
                 <DataTable

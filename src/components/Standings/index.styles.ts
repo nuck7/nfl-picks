@@ -154,21 +154,44 @@ export const PaymentBadge = styled.span<{ $paid: boolean }>`
     margin-top: auto;
 `
 
-// The heading keeps its own bottom margin from GlobalStyle; the right-hand
-// column sits on its baseline rather than being pushed under it.
+// Everything above the grid on one line: what week you are looking at, the
+// control that changes it, and the week's numbers.
+//
+// The spacing below the row is set here rather than left to the heading's own
+// margin from GlobalStyle. That worked while the heading was the tallest thing
+// in the row; with a control beside it the heading's margin no longer reaches
+// the bottom of the line, so the gap before the table has to come from the row
+// itself.
 export const PageHeader = styled.div`
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: ${space[3]};
+    margin-bottom: ${space[6]};
+
+    h1 {
+        margin-bottom: 0;
+    }
 `
 
-// Matches the schedule page's week select, which is the other place in the app
-// you change which week you are looking at.
+// The heading and the select that rewrites it, kept together as one group: when
+// the header wraps it is the week's numbers that drop to their own line, and
+// the control stays with the heading it belongs to.
+export const HeaderTitle = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ${space[3]};
+`
+
+// A basis rather than a fixed width -- beside the heading it needs the room a
+// week label takes and no more, but it is still the first thing to give way
+// when the row runs out of space. The schedule page's select is the other place
+// you change week; it is still a full-width row of its own there.
 export const WeekSelectContainer = styled.div`
+    flex: 0 1 200px;
     max-width: 240px;
-    margin-bottom: ${space[6]};
 `
 
 // The right-hand side of the header: the print link, and under it everything
@@ -186,8 +209,12 @@ export const HeaderMeta = styled.div`
     gap: ${space[2]};
 
     /* Beside a heading that can be most of the width at small sizes, and the
-       header wraps before it overlaps. Once wrapped this is a full-width row of
-       its own, and flex-end alone would not keep the text against the right. */
+       header wraps before it overlaps. A wrapped flex line does not stretch its
+       item, so this stays a content-width box on a line of its own -- and one
+       that space-between leaves at flex-start, which put its right-aligned text
+       in the middle of the page. The auto margin is what carries it to the
+       right edge; text-align then right-aligns the line inside it. */
+    margin-left: auto;
     text-align: right;
 `
 
