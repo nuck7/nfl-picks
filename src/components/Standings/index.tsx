@@ -443,14 +443,16 @@ const Standings = () => {
         <div>
             <PageHeader>
                 <HeaderTitle>
-                    <h1>
-                        {viewedWeek ? `${season} Week ${viewedWeek} Standings` : 'Standings'}
-                    </h1>
+                    {/* Just "Standings". The heading used to read "2026 Week 3
+                        Standings" next to a select reading "Week 3", which said
+                        the week twice in one line and rewrote the page's own
+                        title on every change -- noise for anything reading the
+                        page aloud, and a heading that never held still. */}
+                    <h1>Standings</h1>
 
-                    {/* The heading already names the week, so this is the
-                        control that changes it rather than the only thing
-                        saying which week it is -- which is why it belongs
-                        beside the heading and not on a row of its own. */}
+                    {/* Which makes this the only thing naming the week, and the
+                        reason it belongs against the heading rather than on a
+                        row of its own. */}
                     <WeekSelectContainer>
                         <Select
                             id='standings_week'
@@ -476,14 +478,23 @@ const Standings = () => {
                     only their own picks, so counting what they can see would
                     tell everybody the pot was $5, and nothing beats a confident
                     wrong number. */}
-                {currentUser.isAdmin || showPot || leaders.length ? (
+                {currentUser.isAdmin || season || showPot || leaders.length ? (
                     <HeaderMeta>
                         {currentUser.isAdmin ? (
                             <PrintLink to='/standings/print'>Print picks sheet</PrintLink>
                         ) : null}
 
-                        {showPot || leaders.length ? (
+                        {season || showPot || leaders.length ? (
                             <HeaderMetaLine>
+                                {/* The season is not a week the select can
+                                    reach -- the calendar it is built from is
+                                    this season's -- so it is context rather
+                                    than a choice, and it reads as context here
+                                    beside the week's other fixed facts. */}
+                                {season ? `${season} season` : null}
+
+                                {season && (showPot || leaders.length) ? ' \u00b7 ' : null}
+
                                 {showPot ? (
                                     <>
                                         <MetaValue title={`${entrantCount} × $${WeeklyBuyIn} buy-in`}>
