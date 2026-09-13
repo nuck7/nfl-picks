@@ -154,21 +154,86 @@ export const PaymentBadge = styled.span<{ $paid: boolean }>`
     margin-top: auto;
 `
 
-// The heading keeps its own bottom margin from GlobalStyle; the link sits on
-// its baseline rather than being pushed under it.
+// Everything above the grid on one line: what week you are looking at, the
+// control that changes it, and the week's numbers.
+//
+// The spacing below the row is set here rather than left to the heading's own
+// margin from GlobalStyle. That worked while the heading was the tallest thing
+// in the row; with a control beside it the heading's margin no longer reaches
+// the bottom of the line, so the gap before the table has to come from the row
+// itself.
 export const PageHeader = styled.div`
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: ${space[3]};
+    margin-bottom: ${space[6]};
+
+    h1 {
+        margin-bottom: 0;
+    }
 `
 
-// Matches the schedule page's week select, which is the other place in the app
-// you change which week you are looking at.
+// The heading and the select that rewrites it, kept together as one group: when
+// the header wraps it is the week's numbers that drop to their own line, and
+// the control stays with the heading it belongs to.
+export const HeaderTitle = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ${space[3]};
+`
+
+// A basis rather than a fixed width -- beside the heading it needs the room a
+// week label takes and no more, but it is still the first thing to give way
+// when the row runs out of space. The schedule page's select is the other place
+// you change week; it is still a full-width row of its own there.
 export const WeekSelectContainer = styled.div`
+    flex: 0 1 200px;
     max-width: 240px;
-    margin-bottom: ${space[6]};
+`
+
+// The right-hand side of the header: the print link, and under it everything
+// about the week that is not the grid. Stacked and right-aligned so it sits in
+// space the header was already occupying beside the heading, instead of taking
+// lines of its own further down the page.
+//
+// `align-items: flex-end` rather than `text-align: right` so the link keeps its
+// pill shape -- it is an inline-block whose width is its text, and a text
+// alignment on the column would not move it.
+export const HeaderMeta = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: ${space[2]};
+
+    /* Beside a heading that can be most of the width at small sizes, and the
+       header wraps before it overlaps. A wrapped flex line does not stretch its
+       item, so this stays a content-width box on a line of its own -- and one
+       that space-between leaves at flex-start, which put its right-aligned text
+       in the middle of the page. The auto margin is what carries it to the
+       right edge; text-align then right-aligns the line inside it. */
+    margin-left: auto;
+    text-align: right;
+`
+
+// What is in the pot, how many are playing for it, and who is ahead, in one
+// line.
+//
+// A paragraph, not a flex row. The parts are a sentence with separators in it,
+// so letting them wrap as text keeps a "\u00b7" from ever landing at the start of
+// a wrapped line -- which is exactly what flex-wrap with gap would do.
+//
+// The leaders used to have a bordered banner of their own at 17px, under the
+// week select. That reads well for one name and badly for the state the week
+// actually spends most of its time in -- one decided game leaves most of the
+// pool tied, and the banner became a wrapping wall of names above the table it
+// was meant to summarise.
+export const HeaderMetaLine = styled.p`
+    ${typeStyle('meta')}
+    color: ${color.inkMuted};
+    margin: 0;
 `
 
 export const PrintLink = styled(LinkButton)`
@@ -182,28 +247,6 @@ export const PrintLink = styled(LinkButton)`
     text-decoration: none;
 
     &:hover { background: ${color.surfaceHover}; }
-`
-
-/* -------------------------------------------------- week summary line -- */
-
-// Everything about the week that is not the grid, on one line: what is in the
-// pot, how many are playing for it, and who is ahead.
-//
-// The leaders used to have a bordered banner of their own at 17px. That reads
-// well for one name and badly for the state the week actually spends most of
-// its time in -- one decided game leaves most of the pool tied, and the banner
-// became a wrapping wall of names above the table it was meant to summarise.
-export const WeekSummary = styled.div`
-    margin-bottom: ${space[6]};
-`
-
-// A paragraph, not a flex row. The parts are a sentence with separators in it,
-// so letting them wrap as text keeps a "·" from ever landing at the start of a
-// wrapped line -- which is exactly what flex-wrap with gap would do.
-export const MetaBar = styled.p`
-    ${typeStyle('meta')}
-    color: ${color.inkMuted};
-    margin: 0;
 `
 
 // The two things on the line worth reading at full strength: the amount, and
@@ -253,11 +296,16 @@ export const LeaderToggle = styled.button`
 
 // The names once revealed, on their own line under the summary so they read as
 // its detail rather than as a second statement.
+// The names behind a wide tie, under the line that counts them. Capped so a
+// pool-wide tie wraps as readable text rather than one long line, and pushed
+// right with a margin because a max-width box in a flex-end column is still
+// positioned by the column, not by its own text alignment.
 export const LeaderList = styled.p`
     ${typeStyle('meta')}
     color: ${color.inkMuted};
-    margin: ${space[2]} 0 0 0;
+    margin: 0;
     max-width: 68ch;
+    margin-left: auto;
 `
 
 // One column per player, so a full roster overflows a phone. Without this the

@@ -38,7 +38,13 @@ export const grommetTheme: ThemeType = {
             icon: { light: color.inkMuted, dark: color.inkInverse },
             placeholder: color.inkFaint,
 
-            selected: color.ink,
+            // `selected` is a BACKGROUND: grommet paints the chosen option in
+            // an open Select with it, and takes the label from
+            // `selected-text`. Both were color.ink, so the chosen option drew
+            // ink on ink and its label vanished -- in both themes, since the
+            // token flips with them. Only the background is wrong here, so
+            // only it moves.
+            selected: color.surfaceSunken,
             'selected-background': color.surfaceSunken,
             'selected-text': color.ink,
             active: color.surfaceHover,
@@ -71,7 +77,17 @@ export const grommetTheme: ThemeType = {
             // base.js:356 ships weight 600. That single value is why every
             // grommet input in this app renders semibold today.
             font: { size: type.input.size, height: type.input.leading, weight: font.regular },
-            padding: { horizontal: '15px', vertical: '13px' },
+            // 9px, not 13: this is the one box every control in the app is
+            // sized by -- a Select is a readonly TextInput wearing a drop
+            // button, so the week pickers were inheriting a 52px box built for
+            // typing into. 9px puts every control at 44px, which is still the
+            // minimum comfortable touch target and no longer reads as a form
+            // field where it is only a one-word choice.
+            //
+            // Height is taken out of the padding rather than the type: 17px is
+            // deliberate (see `type.input`), because iOS Safari zooms the page
+            // on focus for anything smaller.
+            padding: { horizontal: '15px', vertical: '9px' },
         },
 
         focus: {
