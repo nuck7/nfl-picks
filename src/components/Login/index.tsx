@@ -40,7 +40,7 @@ type SocialProvider = {
     id: string;
     label: string;
     dark?: boolean;
-    icon: () => JSX.Element;
+    icon: () => React.JSX.Element;
     create: () => AuthProvider;
 };
 
