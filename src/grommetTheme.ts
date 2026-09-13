@@ -38,7 +38,13 @@ export const grommetTheme: ThemeType = {
             icon: { light: color.inkMuted, dark: color.inkInverse },
             placeholder: color.inkFaint,
 
-            selected: color.ink,
+            // `selected` is a BACKGROUND: grommet paints the chosen option in
+            // an open Select with it, and takes the label from
+            // `selected-text`. Both were color.ink, so the chosen option drew
+            // ink on ink and its label vanished -- in both themes, since the
+            // token flips with them. Only the background is wrong here, so
+            // only it moves.
+            selected: color.surfaceSunken,
             'selected-background': color.surfaceSunken,
             'selected-text': color.ink,
             active: color.surfaceHover,
