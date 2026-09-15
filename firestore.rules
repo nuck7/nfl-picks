@@ -8,14 +8,41 @@ service cloud.firestore {
     }
 
     // Admin is held in the player's own document -- there is no hardcoded
-    // allowlist here or in the client. The collection starts empty, so the FIRST
-    // admin must be set by hand in the Firebase console (Firestore -> players ->
-    // your uid -> role: "admin"); console writes bypass these rules. After that,
-    // admins promote each other from the Admin page.
+    // allowlist here or in the client. Two levels:
+    //
+    //   owner  the one person who hands out and takes back admin. Set ONCE by
+    //          hand in the Firebase console (Firestore -> players -> your uid ->
+    //          role: "owner"); console writes bypass these rules, which is the
+    //          only way it can be set, since the rules below refuse 'owner' from
+    //          every client. There is no way to promote a second owner from the
+    //          app, and no way to strip the owner's own role from it either.
+    //   admin  everything else: players, picks, lock times, payments, the seed.
+    //          Granted and revoked by the owner alone.
+    //
+    // An owner is also an admin, so isAdmin() covers both.
+    function roleOf(uid) {
+      return exists(/databases/$(database)/documents/players/$(uid))
+        ? get(/databases/$(database)/documents/players/$(uid)).data.get('role', 'member')
+        : 'none';
+    }
+
+    function isOwner() {
+      return isSignedIn() && roleOf(request.auth.uid) == 'owner';
+    }
+
     function isAdmin() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/players/$(request.auth.uid))
-        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && roleOf(request.auth.uid) in ['admin', 'owner'];
+    }
+
+    // The role on the stored document and on the one being written. Read through
+    // get() with a default, because a bare .role on a document written before the
+    // field existed aborts the whole rule rather than evaluating to false.
+    function currentRole() {
+      return resource.data.get('role', 'member');
+    }
+
+    function nextRole() {
+      return request.resource.data.get('role', 'member');
     }
 
     function hasName() {
@@ -55,13 +82,33 @@ service cloud.firestore {
 
       // Admins add managed players, who must carry both a name and an email --
       // a self-created player is not held to the email requirement, because a
-      // provider is not obliged to give us one.
+      // provider is not obliged to give us one. The new player is always a
+      // member: an admin cannot mint a second admin by adding one.
       allow create: if isAdmin()
         && request.resource.data.managed == true
+        && request.resource.data.role == 'member'
         && hasName()
         && hasEmail();
 
-      allow update, delete: if isAdmin();
+      // An admin maintains everyone -- renaming, fixing an email, entering picks
+      // -- but cannot change anyone's role, including their own, and cannot
+      // touch the owner's document at all. Handing out admin is the owner's
+      // alone, so one admin can neither recruit another nor remove a rival.
+      allow update: if isAdmin()
+        && currentRole() != 'owner'
+        && nextRole() == currentRole();
+
+      // The owner is the only one who grants and revokes admin, and the only
+      // role they can write is 'admin' or 'member' -- 'owner' is refused here
+      // too, so there is never a second owner and the owner cannot demote
+      // themselves into locking the pool out.
+      allow update: if isOwner()
+        && currentRole() != 'owner'
+        && nextRole() in ['admin', 'member'];
+
+      // Deleting the owner would leave nobody able to hand out admin, so the
+      // owner's row stays put.
+      allow delete: if isAdmin() && currentRole() != 'owner';
     }
 
     // Whether a week's picks have locked, from its lock time in epoch millis:
@@ -118,7 +165,7 @@ service cloud.firestore {
             && weekIsLocked(resource.data.week_id));
 
       // Admins submit on behalf of players who have no account of their own, so
-      // the owner is not required to be the signed-in user.
+      // the pick's user_id is not required to be the signed-in user.
       allow create: if isSignedIn()
         && (request.resource.data.user_id == request.auth.uid || isAdmin());
 

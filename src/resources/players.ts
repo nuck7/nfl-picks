@@ -3,7 +3,7 @@ import { User as FirebaseUser, onAuthStateChanged, updateProfile } from 'firebas
 import { addDoc, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 import { CurrentUser, Player, UserRole } from '../types';
-import { isAdmin } from '../utils/admin';
+import { isAdmin, isOwner } from '../utils/admin';
 import { isValidEmail, normalizeEmail } from '../utils/validation';
 import { auth, db } from './firebase.config';
 
@@ -147,7 +147,15 @@ export const addManagedPlayer = async ({
   return { ...record, id: created.id };
 };
 
-export const setPlayerRole = (playerId: string, role: UserRole) =>
+// The roles the app is allowed to write. 'owner' is deliberately absent: it is
+// set once by hand in the Firebase console and the rules refuse it from any
+// client, so the owner can neither be created nor cleared from this page.
+export type GrantableRole = Exclude<UserRole, 'owner'>;
+
+// Only the owner may call this -- the rules enforce it, and the Admin page
+// hides the control from everyone else. An admin who tries anyway gets a
+// permission error rather than a silent no-op.
+export const setPlayerRole = (playerId: string, role: GrantableRole) =>
   setDoc(doc(db, PlayersCollection, playerId), { role }, { merge: true });
 
 export const setPlayerName = (playerId: string, name: string) => {
@@ -252,5 +260,5 @@ export const useCurrentPlayer = (): CurrentUser => {
     []
   );
 
-  return { user, isAdmin: isAdmin(user), loading, refresh };
+  return { user, isAdmin: isAdmin(user), isOwner: isOwner(user), loading, refresh };
 };

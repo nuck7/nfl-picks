@@ -13,7 +13,10 @@ export type MenuOption = {
   hidden?: boolean;
 };
 
-export type UserRole = 'admin' | 'member';
+// 'owner' is the one person who can hand out and take back admin. There is
+// exactly one, set by hand in the Firebase console, and nothing in the app ever
+// writes it -- see GrantableRole in resources/players.ts.
+export type UserRole = 'owner' | 'admin' | 'member';
 
 export type Player = {
   // The Firebase Auth uid for anyone with an account, an auto-id for a managed
@@ -30,6 +33,8 @@ export type Player = {
 export type CurrentUser = {
   user?: Player;
   isAdmin: boolean;
+  // Every owner is also an admin; only the owner changes anyone's role.
+  isOwner: boolean;
   loading: boolean;
   // Re-reads the player document, so a name change is reflected immediately
   // rather than only after the next sign-in.

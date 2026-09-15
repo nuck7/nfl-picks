@@ -17,7 +17,8 @@ import { getWeekMatchups } from '../../resources/espn';
 import { getWeekSettings } from '../../resources/weeks';
 import { makeWeekId } from '../../utils/espn';
 import {
-    addOutcome, emptyRecord, formatRecord, getLeaders, getPickOutcome, Leader, WeekRecord,
+    addOutcome, emptyRecord, formatRecord, getLeaders, getPickOutcome, getTieBreakerTotal,
+    getWeekWinner, isFinal, Leader, WeekRecord,
 } from '../../utils/grading';
 import { resolveFillColor } from '../../utils/teamColors';
 import { isDemoMode, makeDemoPicks } from '../../fixtures/demoPicks';
@@ -260,12 +261,16 @@ const Standings = () => {
 
     // teams must be a dependency: App loads it with 32 sequential ESPN requests,
     // so it always resolves after the matchups and picks do.
-    const { columns, rows, leaders, entrantCount } = useMemo(() => {
+    const {
+        columns, rows, leaders, winner, tieBreakerTotal, entrantCount,
+    } = useMemo(() => {
         if (!matchups.length || !Object.keys(teams).length) {
             return {
                 columns: [] as Column[],
                 rows: [] as StandingsRow[],
                 leaders: [] as Leader[],
+                winner: undefined as Leader | undefined,
+                tieBreakerTotal: undefined as number | undefined,
                 entrantCount: 0,
             }
         }
@@ -305,6 +310,11 @@ const Standings = () => {
         // Keyed by matchup id so the Matchups column can render the same banded
         // heading the schedule page uses.
         const matchupsById = new Map(orderedMatchups.map((matchup) => [getMatchupId(matchup), matchup]))
+
+        // The combined score of the week's last game, once it is final -- the
+        // number everyone was guessing at in the pick form. Resolved up here
+        // because the footer below closes over it, and JSX is built eagerly.
+        const tieBreakerTotal = getTieBreakerTotal(orderedMatchups)
 
         const records = new Map<string, WeekRecord>()
         const rowData: StandingsRow[] = []
@@ -370,7 +380,15 @@ const Standings = () => {
             footer: (
                 <FooterStack>
                     <RecordLabel>Week record</RecordLabel>
-                    <RecordLabel>Tie breaker</RecordLabel>
+                    {/* The answer, beside the row of guesses at it, so the
+                        closest one can be read off the table rather than
+                        worked out. Absent until the last game is final, which
+                        is the same moment the tie breaker starts counting. */}
+                    <RecordLabel>
+                        {tieBreakerTotal === undefined
+                            ? 'Tie breaker'
+                            : `Tie breaker \u2014 ${tieBreakerTotal} actual`}
+                    </RecordLabel>
                 </FooterStack>
             ),
         }]
@@ -422,22 +440,46 @@ const Standings = () => {
         }
 
         // Built from the same records the column footers show, so the banner can
-        // never disagree with the table underneath it.
-        const leaders = getLeaders(participants
+        // never disagree with the table underneath it. The tie breaker guess
+        // rides along: it is what settles the week when the top is level, and
+        // without it here getWeekWinner has nothing to separate them by.
+        const entries: Leader[] = participants
             .filter((participant) => participant.user_id)
             .map((participant) => ({
                 userId: participant.user_id,
                 name: participant.user_name ?? participant.user_id,
                 record: records.get(participant.user_id) ?? emptyRecord(),
-            })))
+                tieBreakerPoints: participant.tieBreakerPoints,
+            }))
+
+        const leaders = getLeaders(entries)
+        const winner = getWeekWinner(entries, tieBreakerTotal)
 
         // The same list the columns are built from, so the pot can never name a
         // number of players the grid doesn't show.
-        return { columns, rows: rowData, leaders, entrantCount: participants.length }
+        return {
+            columns,
+            rows: rowData,
+            leaders,
+            winner,
+            tieBreakerTotal,
+            entrantCount: participants.length,
+        }
     }, [matchups, userPicks, players, teams, weekId, payments, currentUser.isAdmin])
 
     // Only once the viewer can see the whole week -- see the summary below.
     const showPot = canSeeEveryone && entrantCount > 0
+
+    // A week with nothing left to play has a winner rather than a leader, and a
+    // level top is settled on the tie breaker rather than left on the page as a
+    // tie -- which is how week 1 ended. Undefined while a game is still to come,
+    // and undefined too when the tie breaker cannot separate the leaders (nobody
+    // guessed, or two guesses were equally close), which falls back to naming
+    // them all rather than picking one.
+    const weekIsComplete = matchups.length > 0 && matchups.every(isFinal)
+    const decided = weekIsComplete ? winner : undefined
+    // Only worth saying when it actually decided something.
+    const wonOnTieBreaker = Boolean(decided && leaders.length > 1)
 
     return (
         <div>
@@ -506,12 +548,33 @@ const Standings = () => {
 
                                 {showPot && leaders.length ? ' \u00b7 ' : null}
 
-                                {/* Three shapes, narrowing as the week does. One leader
-                                    is named with their full record; a small tie is named
-                                    without one, since a shared lead is shared on correct
-                                    picks only and their other columns can differ; a wide
-                                    tie is a count until asked. */}
-                                {leaders.length === 1 ? (
+                                {/* Four shapes, narrowing as the week does. A
+                                    finished week names its winner -- and says so
+                                    when the tie breaker is what made them one;
+                                    otherwise one leader is named with their full
+                                    record, a small tie is named without one,
+                                    since a shared lead is shared on correct picks
+                                    only and their other columns can differ, and a
+                                    wide tie is a count until asked. */}
+                                {decided ? (
+                                    <>
+                                        {'Winner '}
+                                        <MetaValue>{decided.name}</MetaValue>
+                                        {' '}
+                                        {formatRecord(decided.record)}
+                                        {wonOnTieBreaker
+                                            ? ` \u00b7 took the tie breaker at ${decided.tieBreakerPoints}`
+                                            : null}
+                                        <VisuallyHidden>
+                                            {` — ${decided.record.correct} correct`}
+                                            {wonOnTieBreaker
+                                                ? `, closest to the actual ${tieBreakerTotal}`
+                                                : ''}
+                                        </VisuallyHidden>
+                                    </>
+                                ) : null}
+
+                                {!decided && leaders.length === 1 ? (
                                     <>
                                         {'Leader '}
                                         <MetaValue>{leaders[0].name}</MetaValue>
@@ -523,14 +586,14 @@ const Standings = () => {
                                     </>
                                 ) : null}
 
-                                {leaders.length > 1 && leaders.length <= MaxNamedLeaders ? (
+                                {!decided && leaders.length > 1 && leaders.length <= MaxNamedLeaders ? (
                                     <>
                                         <MetaValue>{formatNames(leaders.map((leader) => leader.name))}</MetaValue>
                                         {` tied at ${leaders[0].record.correct} correct`}
                                     </>
                                 ) : null}
 
-                                {leaders.length > MaxNamedLeaders ? (
+                                {!decided && leaders.length > MaxNamedLeaders ? (
                                     <LeaderToggle
                                         type='button'
                                         aria-expanded={showLeaders}
@@ -549,7 +612,7 @@ const Standings = () => {
                         {/* Rendered only when open rather than hidden with CSS:
                             the toggle is the only thing that can open it, and it
                             isn't rendered below the threshold. */}
-                        {leaders.length > MaxNamedLeaders && showLeaders ? (
+                        {!decided && leaders.length > MaxNamedLeaders && showLeaders ? (
                             <LeaderList id='standings_leaders'>
                                 {formatNames(leaders.map((leader) => leader.name))}
                             </LeaderList>

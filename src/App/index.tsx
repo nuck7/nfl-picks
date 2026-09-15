@@ -61,6 +61,7 @@ export const CurrentWeekContext = React.createContext<CurrentWeek>(EmptyCurrentW
 export const CurrentUserContext = React.createContext<CurrentUser>({
     user: undefined,
     isAdmin: false,
+    isOwner: false,
     loading: true,
     refresh: async () => {},
 })

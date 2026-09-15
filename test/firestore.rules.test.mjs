@@ -15,6 +15,8 @@ const stranger = () =>
   testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
 const admin = () =>
   testEnv.authenticatedContext('admin-uid', { email: 'admin@example.com' }).firestore();
+const owner = () =>
+  testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
 const member = () =>
   testEnv.authenticatedContext('member-uid', { email: 'member@example.com' }).firestore();
 const other = () =>
@@ -96,6 +98,7 @@ beforeEach(async () => {
   await testEnv.clearFirestore();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    await setDoc(doc(db, 'players/owner-uid'), player({ name: 'Owner', email: 'owner@example.com', role: 'owner' }));
     await setDoc(doc(db, 'players/admin-uid'), player({ name: 'Admin', email: 'admin@example.com', role: 'admin' }));
     await setDoc(doc(db, 'players/member-uid'), player({ name: 'Member', email: 'member@example.com' }));
     await setDoc(doc(db, 'players/other-uid'), player({ name: 'Other', email: 'other@example.com' }));
@@ -218,8 +221,8 @@ describe('players', () => {
     await assertSucceeds(updateDoc(doc(admin(), 'players/member-uid'), { name: 'Corrected' }));
   });
 
-  it('lets an admin change anyone else\'s role', async () => {
-    await assertSucceeds(updateDoc(doc(admin(), 'players/member-uid'), { role: 'admin' }));
+  it('stops an admin changing anyone else\'s role', async () => {
+    await assertFails(updateDoc(doc(admin(), 'players/member-uid'), { role: 'admin' }));
   });
 
   it('lets any signed-in user read the roster', async () => {
@@ -228,6 +231,76 @@ describe('players', () => {
 
   it('denies the roster to anonymous users', async () => {
     await assertFails(getDocs(collection(anon(), 'players')));
+  });
+});
+
+describe('only the owner hands out admin', () => {
+  it('lets the owner grant admin', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'players/member-uid'), { role: 'admin' }));
+  });
+
+  it('lets the owner revoke admin', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'players/admin-uid'), { role: 'member' }));
+  });
+
+  it('stops an admin promoting another member', async () => {
+    await assertFails(updateDoc(doc(admin(), 'players/member-uid'), { role: 'admin' }));
+  });
+
+  it('stops an admin revoking a fellow admin', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'players/second-admin'),
+        player({ name: 'Second', email: 'second@example.com', role: 'admin' }));
+    });
+    await assertFails(updateDoc(doc(admin(), 'players/second-admin'), { role: 'member' }));
+  });
+
+  it('stops a revoked admin restoring themselves', async () => {
+    // The whole point of moving this to the owner: revoking has to stick, so the
+    // person who just lost admin cannot hand it straight back to themselves.
+    await assertSucceeds(updateDoc(doc(owner(), 'players/admin-uid'), { role: 'member' }));
+    await assertFails(updateDoc(doc(admin(), 'players/admin-uid'), { role: 'admin' }));
+  });
+
+  it('stops an admin editing the owner at all', async () => {
+    await assertFails(updateDoc(doc(admin(), 'players/owner-uid'), { name: 'Hacked' }));
+    await assertFails(updateDoc(doc(admin(), 'players/owner-uid'), { role: 'member' }));
+    await assertFails(deleteDoc(doc(admin(), 'players/owner-uid')));
+  });
+
+  it('stops a member editing the owner', async () => {
+    await assertFails(updateDoc(doc(member(), 'players/owner-uid'), { role: 'member' }));
+  });
+
+  it('stops anyone minting a second owner', async () => {
+    // Not the owner, not an admin, and not a fresh sign-up: 'owner' can only be
+    // written from the Firebase console, which bypasses these rules.
+    await assertFails(updateDoc(doc(owner(), 'players/member-uid'), { role: 'owner' }));
+    await assertFails(updateDoc(doc(admin(), 'players/member-uid'), { role: 'owner' }));
+    await assertFails(setDoc(doc(admin(), 'players/managed-owner'),
+      player({ managed: true, name: 'Sneak', email: 'sneak@example.com', role: 'owner' })));
+    const fresh = testEnv.authenticatedContext('fresh-owner', { email: 'fresh@example.com' }).firestore();
+    await assertFails(setDoc(doc(fresh, 'players/fresh-owner'),
+      player({ name: 'Fresh', email: 'fresh@example.com', role: 'owner' })));
+  });
+
+  it('stops an admin adding a managed player who is already an admin', async () => {
+    await assertFails(setDoc(doc(admin(), 'players/managed-admin'),
+      player({ managed: true, name: 'Sneak', email: 'sneak2@example.com', role: 'admin' })));
+  });
+
+  it('stops the owner demoting themselves', async () => {
+    await assertFails(updateDoc(doc(owner(), 'players/owner-uid'), { role: 'member' }));
+  });
+
+  it('lets the owner rename themselves', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'players/owner-uid'), { name: 'Renamed Owner' }));
+  });
+
+  it('gives the owner every admin power as well', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'players/member-uid'), { name: 'Corrected' }));
+    await assertSucceeds(setDoc(doc(owner(), 'weeks/week-9'), { name: 'Week 9' }));
+    await assertSucceeds(getDoc(doc(owner(), 'picks/other-pick-open')));
   });
 });
 

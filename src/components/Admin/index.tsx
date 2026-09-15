@@ -5,17 +5,18 @@ import {
     DuplicateEmailError, addManagedPlayer, getPlayers, setPlayerName, setPlayerRole,
     sortPlayersByName,
 } from '../../resources/players';
-import { CurrentUser, CurrentWeek, DropdownOption, PaymentMethod, Player, SeedSummary } from '../../types';
+import { CurrentUser, CurrentWeek, DropdownOption, Game, PaymentMethod, Player, SeedSummary } from '../../types';
 import { makeWeekId } from '../../utils/espn';
-import { isAdmin } from '../../utils/admin';
+import { isAdmin, isOwner } from '../../utils/admin';
 import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
 import { getSeasonWeeks, getWeekSettings, setWeekLock, setWeekWinner } from '../../resources/weeks';
 import { getWeekGames } from '../../resources/cache';
+import { fetchSeasonScoreboard, toGamesByWeek } from '../../resources/espn';
 import { getPicks } from '../../resources/firebase';
 import { countMadePicks, findPickForMatchup, hasCompletePicks } from '../../utils/picks';
 import {
-    addOutcome, emptyRecord, formatRecord, getPickOutcome, getTieBreakerTotal,
-    getWeekWinner, Leader,
+    addOutcome, emptyRecord, formatRecord, getLeaders, getPickOutcome,
+    getTieBreakerTotal, getWeekWinner, Leader,
 } from '../../utils/grading';
 import { seedSeason } from '../../resources/cache';
 import {
@@ -42,12 +43,15 @@ import {
     PickStatus,
     RoleLabel,
     Hint,
+    LockNote,
     LockRow,
     Section,
     SeedNote,
     StyledFormField,
+    SuggestionCell,
     WeekSelectContainer,
     WeekSelectLabel,
+    WinnerCell,
 } from './index.styles';
 
 type AdminTab = 'settings' | 'payments' | 'results' | 'players'
@@ -59,6 +63,16 @@ const AdminTabs: { id: AdminTab; label: string }[] = [
     { id: 'players', label: 'Manage Players' },
 ]
 
+// What the picks say about a week: who won it, and -- when the week ended level
+// at the top -- the combined score of its last game, which is what separated
+// them. The total is carried only when it actually settled a tie, so its
+// presence is what tells an admin the week came down to the tie breaker rather
+// than to correct picks.
+type WeekSuggestion = {
+    leader: Leader
+    tieBreakerTotal?: number
+}
+
 // One row of the Results tab: what is stored for the week, and what the picks
 // say should be stored. They are kept apart so the table can show an admin that
 // their override disagrees with the calculation, rather than quietly hiding it.
@@ -67,18 +81,23 @@ type ResultRow = {
     week: number
     label: string
     winnerPlayerId?: string
-    suggestion?: Leader
+    suggestion?: WeekSuggestion
 }
 
 // Grades one week from scratch: its games, everyone's picks, and who came out
 // on top once a tie is settled on the tie breaker. Only complete entries count,
 // which is the same rule the standings use to decide who gets a column.
+//
+// The games are passed in when the caller already has them -- the season
+// scoreboard below carries every week at once -- and looked up per week only as
+// the fallback for a week that response had nothing for.
 const computeWeekWinner = async (
     season: number,
-    week: number
-): Promise<Leader | undefined> => {
+    week: number,
+    weekGames?: Game[]
+): Promise<WeekSuggestion | undefined> => {
     const [games, picks] = await Promise.all([
-        getWeekGames(season, week),
+        weekGames?.length ? weekGames : getWeekGames(season, week),
         getPicks(makeWeekId(season, week)),
     ])
 
@@ -101,7 +120,31 @@ const computeWeekWinner = async (
             ),
         }))
 
-    return getWeekWinner(entries, getTieBreakerTotal(games))
+    const tieBreakerTotal = getTieBreakerTotal(games)
+    const leader = getWeekWinner(entries, tieBreakerTotal)
+
+    if (!leader) {
+        return undefined
+    }
+
+    // More than one leader means the tie breaker is what picked between them,
+    // so the total is worth showing beside the name. A week won outright says
+    // nothing about it.
+    return getLeaders(entries).length > 1
+        ? { leader, tieBreakerTotal }
+        : { leader }
+}
+
+// The two halves of a week's lock time, held together so the field below can
+// say which of them it is showing. An absent override is a week running on the
+// default, which is not the same as a week with no lock time at all.
+type WeekLock = {
+    // The admin's saved override, absent until one is set.
+    override?: string
+    // The seeded default the Firestore rules enforce. Absent for a week the
+    // season seed has never run for, which falls back to the deadline derived
+    // from the week's kickoffs.
+    fallback?: string
 }
 
 // Who entered the week the payments table is on. The two halves are held in one
@@ -142,6 +185,7 @@ const Admin = () => {
 
     const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
     const [lockValue, setLockValue] = useState('')
+    const [lockSettings, setLockSettings] = useState<WeekLock>({})
     const [savingLock, setSavingLock] = useState(false)
 
     const [tab, setTab] = useState<AdminTab>('settings')
@@ -175,23 +219,65 @@ const Admin = () => {
         ? makeWeekId(currentWeek.season, paymentWeek.value)
         : ''
 
-    // The deadline the week would use with no override, shown so an admin can
-    // see what they are changing away from.
+    // The deadline the week falls back to with no override. The seeded value is
+    // preferred over the derived one because it is the copy the Firestore rules
+    // actually enforce -- if the two ever disagree, the field should show the
+    // one that decides whether picks are open.
     const defaultDeadline = getPickDeadline(currentWeek.games)
+    const fallbackLockAt = lockSettings.fallback ?? defaultDeadline?.toISOString()
+
+    // What picks lock at as things stand: the override when one is saved, the
+    // default otherwise.
+    const lockInEffect = toDateTimeLocalValue(lockSettings.override ?? fallbackLockAt)
+    const hasOverride = Boolean(lockSettings.override)
+    // Nothing to write when the field already says what the week does. This is
+    // what keeps a prefilled default from being saved back as a real override
+    // by an admin who opened the tab, looked, and pressed the button.
+    const lockUnchanged = lockValue === lockInEffect
 
     useEffect(() => {
         if (!currentWeek.weekId) {
             return
         }
-        // Empty when the week has no stored override, rather than pre-filled
-        // with the derived default: the field holds the override and nothing
-        // else, so anything in it is a value an admin actually saved. Filling
-        // it with the default made an unset week look set, and made "Save"
-        // write a copy of the default as a real override. The Hint above still
-        // says what the default is.
+        // The field shows the time picks actually lock, override or not. It
+        // used to be left empty whenever the week had no override, on the
+        // reasoning that the field held the override and nothing else -- but an
+        // empty box under a heading that says "Locks at" reads as a page that
+        // has failed to load, not as "no override set", and it is the one
+        // question this tab exists to answer. Which of the two it is showing is
+        // now said in words underneath, and Save stays disabled until the value
+        // differs from what is already in effect, so a default can no longer be
+        // written back as an override by accident.
+        //
+        // Guarded like every other read on this page. The week rolls over on
+        // its own the moment its last game ends, so a page open across that
+        // moment fires this twice with two week ids in flight at once, and the
+        // OLD week's answer must not land second.
+        let current = true
+
         getWeekSettings(currentWeek.weekId)
-            .then((settings) => setLockValue(toDateTimeLocalValue(settings?.lockAt)))
+            .then((settings) => {
+                if (!current) {
+                    return
+                }
+                setLockSettings({
+                    override: settings?.lockAt,
+                    fallback: settings?.defaultLockAt,
+                })
+                setLockValue(toDateTimeLocalValue(
+                    settings?.lockAt
+                    ?? settings?.defaultLockAt
+                    ?? getPickDeadline(currentWeek.games)?.toISOString()
+                ))
+            })
             .catch(console.error)
+
+        return () => { current = false }
+        // currentWeek.games is deliberately not a dependency: it is replaced by
+        // every score poll, and re-reading the week's settings once a minute to
+        // recompute a deadline that only moves when the week does is a Firestore
+        // read per tab per minute for nothing. The games are set in the same
+        // update as the week id, so they are already this week's here.
     }, [currentWeek.weekId])
 
     // Open on the current week, since that is the one being collected for.
@@ -297,10 +383,27 @@ const Admin = () => {
             const stored = await getSeasonWeeks(currentWeek.season)
             const storedByWeekId = new Map(stored.map((week) => [week.weekId, week]))
 
+            // Every played week's live scores, in ONE request: the site API
+            // serves a whole date range at once, which is the same call the
+            // season seed makes. Grading off the stored copy instead was what
+            // broke the suggestions -- the seed is run by hand, so its scores
+            // are whatever they were the day it ran. A failure here leaves the
+            // per-week lookup in getWeekGames to answer for itself.
+            const calendar = currentWeek.calendar
+            const liveGamesByWeek: Record<number, Game[]> = calendar.start && calendar.end
+                ? await fetchSeasonScoreboard(calendar)
+                    .then(toGamesByWeek)
+                    .catch(() => ({}))
+                : {}
+
             // In parallel: eighteen sequential round trips would take long
             // enough for the admin to assume the tab was broken.
             const suggestions = await Promise.all(
-                played.map((entry) => computeWeekWinner(currentWeek.season, entry.week)
+                played.map((entry) => computeWeekWinner(
+                    currentWeek.season,
+                    entry.week,
+                    liveGamesByWeek[entry.week]
+                )
                     // One unreadable week must not blank the whole table -- an
                     // unseeded week refuses a picks read for anyone but an
                     // admin, and this page has other weeks worth showing.
@@ -337,7 +440,7 @@ const Admin = () => {
             })
 
         return () => { current = false }
-    }, [currentUser.isAdmin, tab, currentWeek.loading, currentWeek.season, currentWeek.week, currentWeek.calendar.weeks])
+    }, [currentUser.isAdmin, tab, currentWeek.loading, currentWeek.season, currentWeek.week, currentWeek.calendar])
 
     // Nothing is stored until this runs: the suggestion is only ever a prefill
     // in the dropdown, so a week an admin has not looked at stays unrecorded
@@ -361,10 +464,20 @@ const Admin = () => {
     }
 
     const saveLock = async () => {
+        // The Save button is disabled in both these cases; a stray Enter in the
+        // field submits the form regardless of which button is focused.
+        if (!lockValue || lockUnchanged) {
+            return
+        }
+
         setSavingLock(true)
         setError(undefined)
         try {
-            await setWeekLock(currentWeek.weekId, fromDateTimeLocalValue(lockValue))
+            const lockAt = fromDateTimeLocalValue(lockValue)
+            await setWeekLock(currentWeek.weekId, lockAt)
+            // Recorded here as well as written, so the note under the field
+            // flips to "override" without re-reading the document.
+            setLockSettings((settings) => ({ ...settings, override: lockAt }))
             setNotice(`Picks for week ${currentWeek.week} now lock at ${new Date(lockValue).toLocaleString()}.`)
         } catch (saveError) {
             console.error(saveError)
@@ -379,9 +492,10 @@ const Admin = () => {
         setError(undefined)
         try {
             await setWeekLock(currentWeek.weekId, '')
-            // Clearing the override empties the field, for the same reason the
-            // load leaves it empty -- the week is back on the default.
-            setLockValue('')
+            // Back onto the default, which the field then shows -- the week
+            // still locks at a time, and this is it.
+            setLockSettings((settings) => ({ ...settings, override: undefined }))
+            setLockValue(toDateTimeLocalValue(fallbackLockAt))
             setNotice('Lock time reset to the default for this week.')
         } catch (saveError) {
             console.error(saveError)
@@ -437,6 +551,12 @@ const Admin = () => {
     }
 
     const changeRole = async (player: Player) => {
+        // The rules are the real gate; this keeps a non-owner from firing a
+        // write that can only come back denied.
+        if (!currentUser.isOwner) {
+            setError('Only the pool owner can change who is an admin.')
+            return
+        }
         const nextRole = isAdmin(player) ? 'member' : 'admin'
         setSaving(player.id)
         try {
@@ -587,7 +707,7 @@ const Admin = () => {
     // header still draws its borders and claims its width, which reads as a
     // stray fourth column. Leave it out entirely unless a row can use it.
     const hasSuggestionToApply = resultRows.some((row) =>
-        row.suggestion && row.suggestion.userId !== row.winnerPlayerId)
+        row.suggestion && row.suggestion.leader.userId !== row.winnerPlayerId)
 
     // Complete entries only, which is the same bar the standings use to decide
     // who gets a column -- so this number and the one on the standings agree.
@@ -662,10 +782,7 @@ const Admin = () => {
                     <Hint>
                         {currentWeek.loading
                             ? 'Loading this week\u2026'
-                            : `Week ${currentWeek.week} of the ${currentWeek.season} season. `}
-                        {!currentWeek.loading && defaultDeadline
-                            ? `By default picks lock at ${defaultDeadline.toLocaleString()}, noon on the day of the first game.`
-                            : null}
+                            : `Week ${currentWeek.week} of the ${currentWeek.season} season. Picks lock at the time below; by default that is noon on the day of the week's first game.`}
                     </Hint>
                     <Form onSubmit={saveLock}>
                         <LockRow>
@@ -682,16 +799,37 @@ const Admin = () => {
                                 primary
                                 type='submit'
                                 label='Save lock time'
-                                disabled={savingLock || !lockValue || !currentWeek.weekId}
+                                // Unchanged is disabled as well as empty: with
+                                // the default prefilled, an admin who opens the
+                                // tab and presses Save would otherwise pin the
+                                // week to a copy of it as a real override.
+                                disabled={savingLock || !lockValue || lockUnchanged || !currentWeek.weekId}
                             />
                             <Button
                                 secondary
                                 type='button'
                                 label='Reset to default'
-                                disabled={savingLock || !currentWeek.weekId}
+                                // Nothing to reset on a week that never had an
+                                // override, and nothing to reset TO on a week
+                                // with no schedule behind it.
+                                disabled={savingLock || !hasOverride || !currentWeek.weekId}
                                 onClick={resetLock}
                             />
                         </LockRow>
+                        {/* Which of the two the field is showing. The old
+                            version said this by leaving the box empty, which
+                            read as a page that had not loaded. */}
+                        {!currentWeek.loading ? (
+                            <LockNote>
+                                {!lockInEffect
+                                    ? 'No games stored for this week yet, so there is no default to fall back on. Set a time here, or run Store season data below.'
+                                    : hasOverride
+                                        ? `Saved for this week. ${fallbackLockAt
+                                            ? `Reset to default puts it back to ${new Date(fallbackLockAt).toLocaleString()}.`
+                                            : 'There is no stored default to reset to.'}`
+                                        : 'The default for this week. Change it and save to override it.'}
+                            </LockNote>
+                        ) : null}
                     </Form>
                 </Section>
 
@@ -875,7 +1013,7 @@ const Admin = () => {
                                     property: 'winnerPlayerId',
                                     header: 'Winner',
                                     render: (row: ResultRow) => (
-                                        <PaymentCell>
+                                        <WinnerCell>
                                             <Select
                                                 id={`winner_${row.weekId}`}
                                                 name={`winner_${row.weekId}`}
@@ -892,7 +1030,7 @@ const Admin = () => {
                                                     (value as string) || undefined
                                                 )}
                                             />
-                                        </PaymentCell>
+                                        </WinnerCell>
                                     ),
                                 },
                                 {
@@ -906,10 +1044,22 @@ const Admin = () => {
                                             // separate. Neither is an error.
                                             return <SeedNote>&mdash;</SeedNote>
                                         }
+                                        const { leader, tieBreakerTotal } = row.suggestion
                                         return (
-                                            <SeedNote>
-                                                {`${row.suggestion.name} (${formatRecord(row.suggestion.record)})`}
-                                            </SeedNote>
+                                            <SuggestionCell>
+                                                <SeedNote>
+                                                    {`${leader.name} (${formatRecord(leader.record)})`}
+                                                </SeedNote>
+                                                {/* Only on a week that ended
+                                                    level at the top, where this
+                                                    is the whole reason one name
+                                                    is here and not another. */}
+                                                {tieBreakerTotal !== undefined ? (
+                                                    <SeedNote>
+                                                        {`Tie breaker: guessed ${leader.tieBreakerPoints}, actual ${tieBreakerTotal}`}
+                                                    </SeedNote>
+                                                ) : null}
+                                            </SuggestionCell>
                                         )
                                     },
                                 },
@@ -924,7 +1074,7 @@ const Admin = () => {
                                         // something, so a row that already
                                         // agrees carries no pointless button.
                                         if (!row.suggestion
-                                            || row.suggestion.userId === row.winnerPlayerId) {
+                                            || row.suggestion.leader.userId === row.winnerPlayerId) {
                                             return null
                                         }
                                         return (
@@ -933,7 +1083,7 @@ const Admin = () => {
                                                 type='button'
                                                 label={row.winnerPlayerId ? 'Use suggested' : 'Accept'}
                                                 disabled={savingWinner === row.weekId}
-                                                onClick={() => changeWinner(row, row.suggestion?.userId)}
+                                                onClick={() => changeWinner(row, row.suggestion?.leader.userId)}
                                             />
                                         )
                                     },
@@ -1054,17 +1204,24 @@ const Admin = () => {
                                 property: 'role',
                                 header: 'Role',
                                 render: (player: Player) => (
-                                    <RoleLabel>{isAdmin(player) ? 'Admin' : 'Member'}</RoleLabel>
+                                    <RoleLabel>
+                                        {isOwner(player) ? 'Owner' : isAdmin(player) ? 'Admin' : 'Member'}
+                                    </RoleLabel>
                                 ),
                             },
-                            {
+                            // Only the owner hands out admin, so for every other
+                            // admin the column isn't there to be disabled -- the
+                            // hint below the table says who to ask instead. The
+                            // rules refuse the write either way; this is so the
+                            // page doesn't offer a button that always fails.
+                            ...(currentUser.isOwner ? [{
                                 property: 'id',
                                 header: 'Access',
                                 render: (player: Player) => {
-                                    // Your own row is locked, so an admin can never
-                                    // revoke themselves. That is what guarantees at
-                                    // least one admin always remains -- there is no
-                                    // hardcoded account to fall back on any more.
+                                    // The owner's own row is locked: there is no
+                                    // hardcoded account to fall back on, so the one
+                                    // person who can grant admin must not be able to
+                                    // give away that power by accident.
                                     if (player.id === currentUser.user?.id) {
                                         return <SeedNote>You</SeedNote>
                                     }
@@ -1077,7 +1234,7 @@ const Admin = () => {
                                         />
                                     )
                                 },
-                            },
+                            }] : []),
                         ]}
                     />
                 ) : (
@@ -1085,6 +1242,13 @@ const Admin = () => {
                         No players yet. A record is created the first time someone signs in.
                     </Message>
                 )}
+
+                {!currentUser.isOwner && players.length ? (
+                    <Hint>
+                        Admin access is granted and revoked by the pool owner only. Ask
+                        them if someone needs it.
+                    </Hint>
+                ) : null}
             </TabPanel>
 
             {confirmingRole ? (
@@ -1105,7 +1269,7 @@ const Admin = () => {
                         <ConfirmText>
                             {isAdmin(confirmingRole)
                                 ? `${confirmingRole.name} will go back to being a member: no admin page, no entering other people's picks, and no changing the lock time or payments. Their own picks are untouched.`
-                                : `${confirmingRole.name} will be able to add and rename players, enter anyone's picks, change the lock time, record payments — and make other people admins, including back to themselves if you revoke this later.`}
+                                : `${confirmingRole.name} will be able to add and rename players, enter anyone's picks, change the lock time and record payments. They will not be able to make anyone else an admin, or undo it if you revoke this later — that stays with you.`}
                         </ConfirmText>
                         <ConfirmActions>
                             <Button

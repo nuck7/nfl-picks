@@ -15,6 +15,7 @@ import {
 } from '../types';
 import { fetchSeasonScoreboard, getWeekMatchups, toGamesByWeek, toTeamsKeyed } from './espn';
 import { makeWeekId } from '../utils/espn';
+import { isFinal } from '../utils/grading';
 import { getKickoffWindow } from '../utils/schedule';
 import { getPickDeadline } from '../utils/picks';
 import { db } from './firebase.config';
@@ -69,10 +70,18 @@ export const getCachedWeekGames = (weekId: string) =>
 //
 // The writes go in one batch, so the season either lands whole or not at all
 // and no one can read a half-seeded season.
-// A week's games, cache first. The season seed fills the cache, so this is
-// usually one Firestore read; an unseeded week still resolves, it just costs an
-// ESPN request instead. Written for the Results tab, which needs many weeks at
-// once and would otherwise hammer ESPN once per week of the season.
+// A week's games, cache first -- but only once the week is over.
+//
+// The seed stores whatever the scoreboard said at the moment it ran, and it is
+// run by hand, so a season seeded in August holds sixteen 0-0 scheduled games
+// for every week in it. Serving those was what left the Results tab grading a
+// finished week as pending: every pick came back 'pending', nobody had a
+// correct one, and so no week ever had a winner to suggest.
+//
+// A week whose games are all final cannot change again, so it is served from
+// the one Firestore read. Anything else goes to ESPN for the live scores, with
+// the stored copy as the fallback if that request fails -- which is also what
+// resolves a week the seed has never run for.
 export const getWeekGames = async (
   season: number,
   week: number
@@ -80,8 +89,13 @@ export const getWeekGames = async (
   const cached = await getCachedWeekGames(makeWeekId(season, week)).catch(
     () => undefined
   );
+  const stored = cached?.games ?? [];
 
-  return cached?.games ?? getWeekMatchups(season, week);
+  if (stored.length && stored.every(isFinal)) {
+    return stored;
+  }
+
+  return getWeekMatchups(season, week).catch(() => stored);
 };
 
 export const seedSeason = async (

@@ -74,6 +74,15 @@ export const NameInput = styled(TextInput)`
     max-width: 200px;
 `
 
+// Which of the two times the field is showing -- the week's default, or an
+// override somebody saved. Under the field rather than in the hint above it,
+// because it describes the value sitting in the box.
+export const LockNote = styled.p`
+    ${typeStyle('caption')}
+    color: ${color.inkMuted};
+    margin: ${space[3]} 0 0 0;
+`
+
 export const LockRow = styled.div`
     display: flex;
     flex-direction: row;
@@ -87,6 +96,24 @@ export const LockRow = styled.div`
 // player names beside it.
 export const PaymentCell = styled.div`
     max-width: 180px;
+`
+
+// The Results tab's winner dropdown, which used to borrow the payments cap
+// above. It holds full player names rather than one of four payment methods, so
+// 180px truncated the longer ones and left "Not recorded" filling the box edge
+// to edge -- this is the same idea with room for a name.
+export const WinnerCell = styled.div`
+    min-width: 200px;
+    max-width: 260px;
+`
+
+// The suggested winner and, when a tie was settled on it, the tie breaker that
+// settled it. Stacked rather than run together on one line: SeedNote does not
+// wrap, so a single line would push the table wider than the page.
+export const SuggestionCell = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: ${space[1]};
 `
 
 // The week the payments below belong to. Above the table rather than beside the
