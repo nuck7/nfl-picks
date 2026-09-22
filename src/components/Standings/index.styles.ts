@@ -362,6 +362,17 @@ export const TableScroll = styled.div`
 
 // The footer carries two lines per column -- week record and tie breaker -- so
 // they share a stack to stay on the same baselines across columns.
+// Why the grid is empty, in the space the grid would have filled. An empty
+// table says "nobody entered" whatever the reason actually was, and the one
+// reason that needs acting on -- the week never got a lock time, so the rules
+// refuse the pool's picks -- looked exactly like the ordinary quiet ones.
+export const TableNote = styled.p`
+    ${typeStyle('meta')}
+    color: ${color.inkMuted};
+    margin: ${space[3]} 0 0;
+    max-width: 62ch;
+`
+
 export const FooterStack = styled.div<{ $align?: 'start' | 'center' }>`
     display: flex;
     flex-direction: column;

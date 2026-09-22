@@ -13,7 +13,7 @@ import {
   SeasonCalendar,
   SeedSummary,
 } from '../types';
-import { fetchSeasonScoreboard, getWeekMatchups, toGamesByWeek, toTeamsKeyed } from './espn';
+import { fetchSeasonScoreboards, getWeekMatchups, toGamesByWeek, toTeamsKeyed } from './espn';
 import { makeWeekId } from '../utils/espn';
 import { isFinal } from '../utils/grading';
 import { getKickoffWindow } from '../utils/schedule';
@@ -105,11 +105,11 @@ export const seedSeason = async (
     throw new Error('The season calendar has not loaded yet.');
   }
 
-  const scoreboard = await fetchSeasonScoreboard(calendar);
-  const gamesByWeek = toGamesByWeek(scoreboard);
+  const scoreboards = await fetchSeasonScoreboards(calendar);
+  const gamesByWeek = toGamesByWeek(scoreboards);
   // Every team appears across a full season, so this is the whole league
   // without a separate request for it.
-  const teams = Object.values(toTeamsKeyed(scoreboard));
+  const teams = Object.values(toTeamsKeyed(scoreboards));
 
   const batch = writeBatch(db);
   const season = calendar.season;

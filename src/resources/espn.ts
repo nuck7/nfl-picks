@@ -73,20 +73,39 @@ export const fetchScoreboard = (seasonWeek?: SeasonWeek): Promise<EspnScoreboard
 // carries the whole league.
 export const TeamsSourceWeek = 1;
 
-// A whole season of games in one request. Passing a bare `dates=2026` also
-// returns the previous season's January playoff games, filed under week numbers
-// that collide with September's -- the date range is what keeps them out.
-const SeasonGamesLimit = 1000;
+// A season of games, one request per week.
+//
+// This used to be a single request for a date range -- `dates=20260903-20270104`
+// -- which carried the whole season at once. ESPN now answers a `dates` RANGE of
+// any width with HTTP 400, which is what broke the Store season data button: the
+// seed failed on its very first call, before Firestore was touched at all, and
+// the page blamed the cache rules for it.
+//
+// The obvious replacement is worse than it looks. A bare `dates=2026&limit=1000`
+// returns 200, but it carries the PREVIOUS season's January playoff games and
+// this season's preseason alongside the regular season -- all filed under week
+// numbers that collide with it, 2026 preseason week 2 sitting next to regular
+// week 2 -- and it is truncated on top of that, arriving with no week 18 at all.
+// Filtering by season type and date window cleans up the collisions but cannot
+// put back the weeks that never arrived.
+//
+// So: a week at a time, in parallel. 18 requests instead of 1, for something an
+// admin runs a few times a season, and in exchange the week a game belongs to is
+// the week we ASKED for rather than a number read back off a mixed response.
+export type SeasonScoreboards = { week: number; scoreboard: EspnScoreboard }[];
 
-const toDateParam = (iso: string) => iso.slice(0, 10).replace(/-/g, '');
-
-export const fetchSeasonScoreboard = (
+export const fetchSeasonScoreboards = (
   calendar: SeasonCalendar
-): Promise<EspnScoreboard> =>
-  espnFetch<EspnScoreboard>(`${SiteApiBase}/scoreboard`, {
-    dates: `${toDateParam(calendar.start)}-${toDateParam(calendar.end)}`,
-    limit: SeasonGamesLimit,
-  });
+): Promise<SeasonScoreboards> =>
+  Promise.all(
+    calendar.weeks
+      .map((entry) => entry.week)
+      .filter((week) => week > 0)
+      .map(async (week) => ({
+        week,
+        scoreboard: await fetchScoreboard({ season: calendar.season, week }),
+      }))
+  );
 
 /* ---------------------------------------------------------------------------
  * Mappers. The only place that knows ESPN's wire shape.
@@ -140,19 +159,20 @@ export const toGame = (event: EspnEvent): Game | undefined => {
   };
 };
 
-// Games bucketed by week number, for a response spanning a whole season.
-export const toGamesByWeek = (scoreboard: EspnScoreboard): Record<number, Game[]> => {
+// Games bucketed by week, keyed by the week each response was ASKED for rather
+// than by the week number on the events. The two agree now that every response
+// is a single week's worth, and asking is the half we can trust -- it was a
+// week number read off the wire that let preseason games land in the regular
+// season's buckets.
+export const toGamesByWeek = (responses: SeasonScoreboards): Record<number, Game[]> => {
   const byWeek: Record<number, Game[]> = {};
 
-  for (const event of scoreboard.events ?? []) {
-    const week = event.week?.number;
-    const game = toGame(event);
+  for (const { week, scoreboard } of responses) {
+    const games = toGames(scoreboard);
 
-    if (!week || !game) {
-      continue;
+    if (games.length) {
+      byWeek[week] = games;
     }
-
-    byWeek[week] = [...(byWeek[week] ?? []), game];
   }
 
   return byWeek;
@@ -193,13 +213,23 @@ export const toSeasonCalendar = (scoreboard: EspnScoreboard): SeasonCalendar => 
   };
 };
 
-export const toTeamsKeyed = (scoreboard: EspnScoreboard): TeamsKeyed => {
+// Takes one scoreboard or a whole season's worth. The season form is what the
+// seed uses: no single response carries all 32 teams any more, so they are
+// accumulated across the weeks instead.
+export const toTeamsKeyed = (
+  source: EspnScoreboard | SeasonScoreboards
+): TeamsKeyed => {
+  const scoreboards = Array.isArray(source)
+    ? source.map((entry) => entry.scoreboard)
+    : [source];
   const keyed: TeamsKeyed = {};
 
-  for (const event of scoreboard.events ?? []) {
-    for (const side of event.competitions?.[0]?.competitors ?? []) {
-      const team = toTeam(side.team);
-      keyed[team.id] = team;
+  for (const scoreboard of scoreboards) {
+    for (const event of scoreboard.events ?? []) {
+      for (const side of event.competitions?.[0]?.competitors ?? []) {
+        const team = toTeam(side.team);
+        keyed[team.id] = team;
+      }
     }
   }
 

@@ -53,7 +53,7 @@ const PrintPicks: React.FC = () => {
         // canSeeEveryone is safe to assert here: the page is admin-only, and the
         // rules let an admin read the week whether or not it has locked.
         getPicksForWeek(weekId, { playerId: user?.id, canSeeEveryone: true })
-            .then(setPicks)
+            .then((week) => setPicks(week.picks))
             .catch(console.error)
     }, [isAdmin, weekId, user?.id])
 

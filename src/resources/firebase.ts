@@ -42,6 +42,37 @@ export const getPicks = async (weekId: string): Promise<PicksForm[]> => {
   return picks;
 };
 
+// What came back, and how much of it. An empty picks array is ambiguous on its
+// own -- nobody entered, the week is still private, or the read was refused all
+// look identical in a grid -- and that ambiguity is exactly what left members
+// staring at a standings page with no columns and no error.
+export type WeekPicks = {
+  picks: PicksForm[];
+  // 'everyone' only when the whole week was actually read.
+  scope: 'everyone' | 'mine';
+  // The rules refused a read the client believed it was allowed to make. Means
+  // the two disagree about whether the week is locked -- see
+  // weekIsLockedForReads in resources/weeks.
+  denied: boolean;
+};
+
+const mineOnly = async (
+  weekId: string,
+  playerId: string | undefined,
+  denied: boolean
+): Promise<WeekPicks> => {
+  const mine = playerId ? await getPicksForPlayer(weekId, playerId) : undefined;
+
+  return { picks: mine ? [mine] : [], scope: 'mine', denied };
+};
+
+// Firestore rejects a refused list with this code; anything else is a real
+// failure and should not be quietly downgraded to "you may only see your own".
+const isPermissionDenied = (error: unknown): boolean =>
+  typeof error === 'object'
+  && error !== null
+  && (error as { code?: string }).code === 'permission-denied';
+
 // What the standings may ask for. Before the week locks the rules refuse a
 // member anyone else's picks -- and refuse the whole query rather than filtering
 // the rows they may not have -- so this asks a narrower question instead of
@@ -50,22 +81,27 @@ export const getPicks = async (weekId: string): Promise<PicksForm[]> => {
 export const getPicksForWeek = async (
   weekId: string,
   viewer: { playerId?: string; canSeeEveryone: boolean }
-): Promise<PicksForm[]> => {
+): Promise<WeekPicks> => {
   if (!weekId) {
-    return [];
+    return { picks: [], scope: 'mine', denied: false };
   }
 
-  if (viewer.canSeeEveryone) {
-    return getPicks(weekId);
+  if (!viewer.canSeeEveryone) {
+    return mineOnly(weekId, viewer.playerId, false);
   }
 
-  if (!viewer.playerId) {
-    return [];
+  try {
+    return { picks: await getPicks(weekId), scope: 'everyone', denied: false };
+  } catch (error) {
+    if (!isPermissionDenied(error)) {
+      throw error;
+    }
+
+    // The caller was wrong about the week being readable. Rather than let the
+    // page render as though nobody had entered, fall back to the one thing the
+    // rules always allow -- the viewer's own card -- and say so.
+    return mineOnly(weekId, viewer.playerId, true);
   }
-
-  const mine = await getPicksForPlayer(weekId, viewer.playerId);
-
-  return mine ? [mine] : [];
 };
 
 // Takes the player explicitly rather than reading auth.currentUser, so an admin

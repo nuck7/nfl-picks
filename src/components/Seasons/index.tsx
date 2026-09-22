@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { DataTable, Text } from 'grommet';
 import { CurrentWeek, Game } from '../../types';
 import { CurrentWeekContext } from '../../App';
-import { fetchSeasonScoreboard, toGamesByWeek } from '../../resources/espn';
+import { fetchSeasonScoreboards, toGamesByWeek } from '../../resources/espn';
 import { formatGameDateTime, getKickoffWindow } from '../../utils/schedule';
 
 type SeasonWeekRow = {
@@ -27,8 +27,8 @@ const Seasons = () => {
             return
         }
 
-        fetchSeasonScoreboard(calendar)
-            .then((scoreboard) => setGamesByWeek(toGamesByWeek(scoreboard)))
+        fetchSeasonScoreboards(calendar)
+            .then((scoreboards) => setGamesByWeek(toGamesByWeek(scoreboards)))
             .catch(console.error)
     }, [calendar.start, calendar.end])
 

@@ -1,20 +1,20 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { ColumnConfig, DataTable, Select } from 'grommet';
 import { Checkmark, Close, FormDown, FormNext } from 'grommet-icons';
-import { getPicksForWeek } from '../../resources/firebase';
+import { getPicksForWeek, WeekPicks } from '../../resources/firebase';
 import { getPlayers } from '../../resources/players';
 import { getWeekPayments, toPaymentsByPlayer } from '../../resources/payments';
 import {
     CurrentUser, CurrentWeek, DropdownOption, Game, Outcome, PaymentMethod, Pick,
-    PicksForm, Player, StandingsPickCell, StandingsRow, Team, TeamsKeyed,
+    PicksForm, Player, StandingsPickCell, StandingsRow, Team, TeamsKeyed, WeekSettings,
 } from '../../types';
-import { CurrentUserContext, CurrentWeekContext, SubmitPicksContext, TeamsContext } from '../../App';
+import { CurrentUserContext, CurrentWeekContext, TeamsContext } from '../../App';
 import { PaymentMethodLabels, WeeklyBuyIn } from '../../constants';
 import { getMatchupId, getMatchupLabel, getTeamByHomeAway } from '../../utils/teams';
 import { canSubmitPicks, findPickForMatchup, hasCompletePicks } from '../../utils/picks';
 import { byKickoff } from '../../utils/schedule';
 import { getWeekMatchups } from '../../resources/espn';
-import { getWeekSettings } from '../../resources/weeks';
+import { getRulesLockMs, getWeekSettings, weekIsLockedForReads } from '../../resources/weeks';
 import { makeWeekId } from '../../utils/espn';
 import {
     addOutcome, emptyRecord, formatRecord, getLeaders, getPickOutcome, getTieBreakerTotal,
@@ -28,21 +28,25 @@ import { color } from '../../theme';
 import {
     FooterStack, HeaderMeta, HeaderMetaLine, HeaderTitle, LeaderList, LeaderToggle, MetaValue, NoPick,
     OutcomeBadge, PageHeader, PaymentBadge, PickLogo, PickTile, PlayerHeader,
-    PrintLink, RecordLabel, RecordValue, TableScroll, TieBreakerValue, WeekSelectContainer,
+    PrintLink, RecordLabel, RecordValue, TableNote, TableScroll, TieBreakerValue,
+    WeekSelectContainer,
 } from './index.styles';
 
 type Column = ColumnConfig<StandingsRow>
 
-// One week as this page shows it: its games, the id its picks and payments are
-// stored under, and whether its picks have locked. The last one is per week and
-// not a property of "now" -- a finished week is locked however open the week in
-// play happens to be.
+// One week as this page shows it: its games and the id its picks and payments
+// are stored under. Whether the pool's picks may be shown is deliberately NOT
+// here -- see canSeeEveryone below, which asks the weeks document rather than
+// the schedule, because the weeks document is what the rules will answer from.
 type ViewedWeek = {
     week: number
     weekId: string
     games: Game[]
-    locked: boolean
 }
+
+// Referentially stable, so a week with no picks yet doesn't hand the memo below
+// a fresh array on every render.
+const NoPicks: PicksForm[] = []
 
 // Every player column is this wide, explicitly. Letting the content size them
 // meant each column was as wide as its own header, so the tile -- centred in
@@ -51,6 +55,11 @@ type ViewedWeek = {
 // 76px header both fit inside this less the cell padding, so nothing stretches
 // it and the spacing is even by construction.
 const PlayerColumnWidth = '92px'
+
+// setTimeout holds its delay in a signed 32-bit int, so anything beyond ~24 days
+// overflows and fires immediately. A lock further out than this is slept to in
+// stages instead. Same ceiling App uses for the pick deadline.
+const MaxTimeoutMs = 2_147_483_647
 
 // Above this many tied at the top, the names collapse to a count. Three fit on
 // one line at meta size even on a phone; four start wrapping, and a full pool
@@ -132,14 +141,17 @@ const Standings = () => {
     // rather than the only week it can show -- a finished week stays readable.
     const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
     const { calendar, season } = currentWeek
-    // The CURRENT week is locked once picks can no longer be submitted. App
-    // leaves this true when it has no deadline to go on, so an unknown deadline
-    // reads as "not locked yet" and keeps everyone else's picks hidden -- the
-    // same way the rules treat an unseeded week.
-    const currentWeekIsLocked = !useContext(SubmitPicksContext)
     const [selectedWeek, setSelectedWeek] = useState<DropdownOption>()
     const [otherWeek, setOtherWeek] = useState<ViewedWeek>()
-    const [userPicks, setUserPicks] = useState<PicksForm[]>([])
+    // Kept with the week it was read for, so the answer to "may this viewer see
+    // the pool's picks" is never the previous week's answer.
+    const [weekSettings, setWeekSettings] = useState<{ weekId: string; settings?: WeekSettings }>()
+    const [weekPicks, setWeekPicks] = useState<WeekPicks & { weekId: string }>()
+    // Re-reads the clock when the week's lock time arrives. The standings used
+    // to inherit that moment from App, which keeps a timer for the pick form;
+    // now that the read lock is answered here, the timer has to be here too, or
+    // a tab left open across the deadline keeps showing one column.
+    const [lockTick, setLockTick] = useState(0)
     const [players, setPlayers] = useState<Player[]>([])
     const [payments, setPayments] = useState<Record<string, PaymentMethod>>({})
     // Only ever consulted for a tie too wide to name inline, so it needs no
@@ -168,10 +180,8 @@ const Standings = () => {
     const viewedWeek = selectedWeek?.value ?? currentWeek.week
     const isCurrentWeek = viewedWeek === currentWeek.week
 
-    // Any other week has to be fetched, and so does its own lock time. Whether
-    // the pool's picks may be shown is a per-week question: answering it with
-    // the current week's lock would either hide a finished week's grid or ask
-    // Firestore for a future week's picks and be refused.
+    // Any other week has to be fetched. Its lock comes from the effect below,
+    // which asks the same question for every week rather than only for this one.
     useEffect(() => {
         if (isCurrentWeek || !viewedWeek || !season) {
             return
@@ -181,18 +191,10 @@ const Standings = () => {
         const weekId = makeWeekId(season, viewedWeek)
 
         const load = async () => {
-            const [games, settings] = await Promise.all([
-                getWeekMatchups(season, viewedWeek),
-                getWeekSettings(weekId).catch(() => undefined),
-            ])
+            const games = await getWeekMatchups(season, viewedWeek)
 
             if (current) {
-                setOtherWeek({
-                    week: viewedWeek,
-                    weekId,
-                    games,
-                    locked: !canSubmitPicks(games, Date.now(), settings?.lockAt),
-                })
+                setOtherWeek({ week: viewedWeek, weekId, games })
             }
         }
 
@@ -209,17 +211,70 @@ const Standings = () => {
             week: currentWeek.week,
             weekId: currentWeek.weekId,
             games: currentWeek.games,
-            locked: currentWeekIsLocked,
         }
         : otherWeek?.week === viewedWeek ? otherWeek : undefined
 
     const matchups = viewing?.games ?? []
     const weekId = viewing?.weekId ?? ''
-    const picksAreLocked = viewing?.locked ?? true
-    // Whether this viewer can see the whole week. Before the lock the rules
-    // refuse a member anyone else's picks, so their answer to "who entered" is
-    // only ever themselves -- which is why the pot below waits for this.
-    const canSeeEveryone = currentUser.isAdmin || picksAreLocked
+
+    // The lock time the RULES will judge the picks read by. Fetched for every
+    // week the page can show, current one included.
+    useEffect(() => {
+        if (!weekId) {
+            return
+        }
+
+        let current = true
+
+        getWeekSettings(weekId)
+            .catch(() => undefined)
+            .then((settings) => {
+                if (current) {
+                    setWeekSettings({ weekId, settings })
+                }
+            })
+
+        return () => { current = false }
+    }, [weekId])
+
+    const settings = weekSettings?.weekId === weekId ? weekSettings.settings : undefined
+    const settingsLoaded = weekSettings?.weekId === weekId
+
+    useEffect(() => {
+        const lockMs = getRulesLockMs(settings)
+        const remaining = lockMs - Date.now()
+
+        if (!lockMs || remaining <= 0) {
+            return
+        }
+
+        // Clamped and re-armed from the tick, the way App sleeps to the pick
+        // deadline: setTimeout holds its delay in a signed 32-bit int.
+        const timer = window.setTimeout(
+            () => setLockTick((tick) => tick + 1),
+            Math.min(remaining, MaxTimeoutMs)
+        )
+
+        return () => window.clearTimeout(timer)
+    }, [settings, lockTick])
+
+    // Whether this viewer can see the whole week -- and therefore whether asking
+    // for it is a request that can succeed.
+    //
+    // This used to be answered from the schedule, the same way the pick form
+    // decides whether it is still open. The rules do not have the schedule: they
+    // read the weeks document and treat one without a lock time as never locked.
+    // On a week that was never seeded the two disagreed, the page asked for
+    // everyone's picks, the rules refused the whole list, and every member got a
+    // grid with no columns in it. So the question is put to the same field the
+    // rules will answer from.
+    const canSeeEveryone = currentUser.isAdmin || weekIsLockedForReads(settings)
+
+    // What the schedule says, which is what the pick form and the deadline
+    // shown to players both go by. Only used to tell a week that is genuinely
+    // still open from one whose lock never made it into the database.
+    const deadlinePassed = matchups.length > 0
+        && !canSubmitPicks(matchups, Date.now(), settings?.lockAt)
 
     useEffect(() => {
         // Columns come from the roster, not from who happens to have submitted --
@@ -240,24 +295,54 @@ const Standings = () => {
     }, [currentUser.isAdmin, weekId])
 
     useEffect(() => {
-        if (!weekId) {
+        // Waiting for the settings rather than guessing at them: asking before
+        // they land would run the narrow query, then the broad one a tick later,
+        // for every week anyone opens.
+        //
+        // An admin does not wait, because their answer does not depend on the
+        // settings -- the rules let them read the week either way. Making them
+        // wait would have put a Firestore read they do not need between the page
+        // and its own data, so a weeks document that never arrived would hang
+        // the grid for the one person able to fix it.
+        if (!weekId || (!currentUser.isAdmin && !settingsLoaded)) {
             return
         }
+
+        let current = true
 
         const fetchPicks = async () => {
             // Asked as a narrower query before the lock rather than filtered
             // afterwards: the rules refuse a member the whole week until then,
             // so fetching everything would fail outright.
-            const userPicks: PicksForm[] = await getPicksForWeek(weekId, {
+            const picks = await getPicksForWeek(weekId, {
                 playerId: currentUser.user?.id,
                 canSeeEveryone,
             })
-            setUserPicks(userPicks)
+
+            if (current) {
+                setWeekPicks({ ...picks, weekId })
+            }
         }
+
         // Firestore can reject (expired rules, offline). Demo mode should still
-        // render, so swallow the failure and leave the real picks empty.
-        fetchPicks().catch(console.error)
-    }, [weekId, canSeeEveryone, currentUser.user?.id])
+        // render, so swallow the failure and leave the real picks empty -- but
+        // record that it failed, so the grid below can say so rather than read
+        // as though nobody had entered.
+        fetchPicks().catch((error) => {
+            console.error(error)
+            if (current) {
+                setWeekPicks({ picks: [], scope: 'mine', denied: true, weekId })
+            }
+        })
+
+        return () => { current = false }
+    }, [weekId, settingsLoaded, canSeeEveryone, currentUser.isAdmin, currentUser.user?.id])
+
+    // Anchored to the week on screen, so switching weeks empties the grid
+    // rather than briefly drawing the previous week's columns under the new
+    // week's heading.
+    const picksForWeek = weekPicks?.weekId === weekId ? weekPicks : undefined
+    const userPicks = picksForWeek?.picks ?? NoPicks
 
     // teams must be a dependency: App loads it with 32 sequential ESPN requests,
     // so it always resolves after the matchups and picks do.
@@ -476,6 +561,31 @@ const Standings = () => {
     // and undefined too when the tie breaker cannot separate the leaders (nobody
     // guessed, or two guesses were equally close), which falls back to naming
     // them all rather than picking one.
+    // Why there is nothing to show, when there is nothing to show. Only once the
+    // week's games and its picks have both landed -- before that an empty grid
+    // is just a grid that hasn't loaded.
+    // Why the grid is showing less than the whole week -- or nothing at all.
+    //
+    // Worded for anybody signed in, not for a participant: the standings are
+    // readable by everyone with an account, whether or not they are playing, so
+    // "your own entry" is the wrong frame for half the people who can open this
+    // page. It is the POOL's picks that are or aren't visible.
+    //
+    // Said even when a column is already showing, since a viewer looking at one
+    // column has no way to tell a quiet week from a week they are only seeing
+    // part of -- which is the whole failure this page had.
+    const emptyReason = !matchups.length || !picksForWeek
+        ? undefined
+        : picksForWeek.denied
+            ? 'This week\u2019s picks could not be read. The week has no lock time recorded, so the pool\u2019s picks stay private \u2014 an admin can fix this by re-seeding the season on the Admin page.'
+            : picksForWeek.scope === 'mine' && deadlinePassed
+                ? 'This week is past its deadline but has no lock time recorded, so the pool\u2019s picks stay private. An admin can fix this by re-seeding the season on the Admin page.'
+                : picksForWeek.scope === 'mine'
+                    ? 'The pool\u2019s picks appear once this week\u2019s deadline passes.'
+                    : entrantCount > 0
+                        ? undefined
+                        : 'No completed entries for this week yet.'
+
     const weekIsComplete = matchups.length > 0 && matchups.every(isFinal)
     const decided = weekIsComplete ? winner : undefined
     // Only worth saying when it actually decided something.
@@ -635,6 +745,8 @@ const Standings = () => {
                     pad={{ body: { horizontal: 'xsmall', vertical: 'xsmall' } }}
                 />
             </TableScroll>
+
+            {emptyReason ? <TableNote>{emptyReason}</TableNote> : null}
         </div>
     )
 }

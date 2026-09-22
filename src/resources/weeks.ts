@@ -30,6 +30,31 @@ export const getWeekSettings = async (
     : undefined;
 };
 
+// Whether the FIRESTORE RULES will let a member read everyone else's picks for
+// this week -- which is a different question from whether the pick form is
+// closed, and the difference is what made a member's standings come back empty.
+//
+// The form's deadline is derived from the schedule, so it always exists. The
+// rules have no schedule: they read lockAtMs, fall back to the seeded
+// defaultLockAtMs, and treat a week carrying neither as never locked (see
+// lockMs in firestore.rules). A week that was never seeded therefore reads as
+// open to the rules while the app considers it long closed, and a client that
+// asks the broad question on the app's answer gets the whole list refused.
+//
+// So this mirrors the rules field for field. Anything that changes lockMs in
+// firestore.rules has to change here too.
+export const getRulesLockMs = (settings?: WeekSettings): number =>
+  settings?.lockAtMs ?? settings?.defaultLockAtMs ?? 0;
+
+export const weekIsLockedForReads = (
+  settings?: WeekSettings,
+  now: number = Date.now()
+): boolean => {
+  const lockMs = getRulesLockMs(settings);
+
+  return lockMs > 0 && now >= lockMs;
+};
+
 // An empty lockAt clears the override, putting the week back on the default
 // deadline rather than locking it forever.
 //

@@ -11,7 +11,7 @@ import { isAdmin, isOwner } from '../../utils/admin';
 import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
 import { getSeasonWeeks, getWeekSettings, setWeekLock, setWeekWinner } from '../../resources/weeks';
 import { getWeekGames } from '../../resources/cache';
-import { fetchSeasonScoreboard, toGamesByWeek } from '../../resources/espn';
+import { fetchSeasonScoreboards, toGamesByWeek } from '../../resources/espn';
 import { getPicks } from '../../resources/firebase';
 import { countMadePicks, findPickForMatchup, hasCompletePicks } from '../../utils/picks';
 import {
@@ -391,7 +391,7 @@ const Admin = () => {
             // per-week lookup in getWeekGames to answer for itself.
             const calendar = currentWeek.calendar
             const liveGamesByWeek: Record<number, Game[]> = calendar.start && calendar.end
-                ? await fetchSeasonScoreboard(calendar)
+                ? await fetchSeasonScoreboards(calendar)
                     .then(toGamesByWeek)
                     .catch(() => ({}))
                 : {}
@@ -644,8 +644,8 @@ const Admin = () => {
     }
 
     // Copies the season from ESPN into Firestore: the week list, all 32 teams,
-    // and one document per week of games. Costs a single ESPN request -- the
-    // whole regular season comes back from one date-ranged scoreboard call.
+    // and one document per week of games. Costs one ESPN request per week, run
+    // in parallel -- see fetchSeasonScoreboards for why it is no longer one.
     const seed = async () => {
         setSeeding(true)
         setError(undefined)
@@ -657,7 +657,14 @@ const Admin = () => {
             setNotice(`Stored the ${summary.season} season: ${summary.weeks} weeks, ${summary.games} games, ${summary.teams} teams.`)
         } catch (seedError) {
             console.error(seedError)
-            setError('Could not store the season. Check that the Firestore rules allow admins to write the cache collection.')
+            // Named the Firestore rules as the cause whatever had actually gone
+            // wrong, which sent a real failure -- ESPN dropping the season
+            // request -- looking for a permissions bug that was never there.
+            // The message now reports what threw and leaves the diagnosis open.
+            setError(
+                `Could not store the season: ${seedError instanceof Error ? seedError.message : String(seedError)}. `
+                + 'The full error is in the browser console.'
+            )
         } finally {
             setSeeding(false)
         }

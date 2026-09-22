@@ -5,7 +5,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, deleteDoc, deleteField, getDoc, getDocs, collection, query, serverTimestamp, setDoc, updateDoc, where, Timestamp } from 'firebase/firestore';
+import { doc, deleteDoc, deleteField, getDoc, getDocs, collection, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, Timestamp } from 'firebase/firestore';
 
 let testEnv;
 
@@ -376,6 +376,25 @@ describe('picks stay private until the week locks', () => {
     await assertSucceeds(getDocs(weekQuery(admin(), OpenWeek)));
   });
 
+  // The standings are for everyone with an account, not only for the people in
+  // the week. Someone signed in who has never entered -- no player document at
+  // all, which is what `stranger` is -- still gets to read a locked week, and
+  // still gets the roster and the lock time the page needs to draw it.
+  it('lets a signed-in non-player read a locked week', async () => {
+    await assertSucceeds(getDoc(doc(stranger(), 'picks/other-pick')));
+    await assertSucceeds(getDocs(weekQuery(stranger(), LockedWeek)));
+    await assertSucceeds(getDocs(collection(stranger(), 'players')));
+    await assertSucceeds(getDoc(doc(stranger(), `weeks/${LockedWeek}`)));
+  });
+
+  // ...and is held to the same privacy as everybody else before the lock, which
+  // is the half of "anyone signed in may look" that is easy to lose.
+  it('holds a signed-in non-player to the lock like anyone else', async () => {
+    await assertFails(getDoc(doc(stranger(), 'picks/other-pick-open')));
+    await assertFails(getDocs(weekQuery(stranger(), OpenWeek)));
+    await assertFails(getDoc(doc(stranger(), 'picks/other-pick-unseeded')));
+  });
+
   it('hides other players when the week has never been seeded', async () => {
     // No week document means no known deadline, and an unknown deadline must
     // hide picks rather than expose them.
@@ -500,6 +519,38 @@ describe('payments', () => {
 
 describe('cache', () => {
   const weekDocId = 'cache/matchups_2026_week_1';
+
+  // The single setDoc tests below check the envelope. This one checks the shape
+  // seedSeason actually commits: one writeBatch spanning many cache documents
+  // AND the weeks documents that carry the lock times, every fetchedAt a
+  // serverTimestamp resolved at commit rather than at request. A batch is not
+  // the same request as a setDoc, and the seed only ever writes this way.
+  it('accepts the batch the season seed actually commits', async () => {
+    const db = admin();
+    const batch = writeBatch(db);
+
+    for (const week of [1, 2, 18]) {
+      batch.set(doc(db, `cache/matchups_2026_week_${week}`), cacheDoc({
+        week,
+        weekId: `2026_week_${week}`,
+        games: [],
+      }));
+      batch.set(doc(db, `weeks/2026_week_${week}`), {
+        weekId: `2026_week_${week}`,
+        defaultLockAt: new Date(Yesterday).toISOString(),
+        defaultLockAtMs: Yesterday,
+      }, { merge: true });
+    }
+
+    batch.set(doc(db, 'cache/season_2026'), cacheDoc({
+      start: '2026-09-03',
+      end: '2027-01-04',
+      weeks: [],
+    }));
+    batch.set(doc(db, 'cache/teams_2026'), cacheDoc({ teams: [] }));
+
+    await assertSucceeds(batch.commit());
+  });
 
   it('lets a signed-in user read', async () => {
     await assertSucceeds(getDoc(doc(member(), weekDocId)));
