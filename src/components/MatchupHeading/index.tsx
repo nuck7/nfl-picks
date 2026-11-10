@@ -44,6 +44,12 @@ interface Props {
     // name ellipse. For the pick form, where the band is full width and still
     // has to fit two names on a phone.
     abbreviateOnMobile?: boolean;
+    // Makes each half of the band a button, for the pick form. `selected` is
+    // the current pick, shown without any symbol: the picked logo grows and
+    // lifts; the other half goes dark and its logo turns grey.
+    selected?: 'away' | 'home';
+    onSelect?: (side: 'away' | 'home') => void;
+    disabled?: boolean;
 }
 
 // A finished game gives most of the band to the winner's colour, but the loser
@@ -51,6 +57,7 @@ interface Props {
 // than a single-team block.
 const WinnerSplit = 70
 const EvenSplit = 50
+const PickSplit = 60
 
 // "Away Team <away logo> @ <home logo> Home Team", laid out as three tracks --
 // 1fr, auto, 1fr -- so the "@" sits on the container's exact midpoint. Team
@@ -58,7 +65,7 @@ const EvenSplit = 50
 // renders empty while TeamsContext is still loading.
 const MatchupHeading: React.FC<Props> = ({
     teams, game, size = 'full', leadingLogos, tone = 'plain', meta, showResult,
-    abbreviateOnMobile,
+    abbreviateOnMobile, selected, onSelect, disabled,
 }) => {
     const awayTeam = getTeamByHomeAway(teams, game, 'away')
     const homeTeam = getTeamByHomeAway(teams, game, 'home')
@@ -86,9 +93,14 @@ const MatchupHeading: React.FC<Props> = ({
             : fullName
     )
 
+    const selectable = Boolean(onSelect)
     const winner = showResult ? getWinningSideKey(game) : undefined
-    const split = winner === 'away' ? WinnerSplit
-        : winner === 'home' ? 100 - WinnerSplit
+    // A pick leans the band towards that team, but less than a final result
+    // does -- both teams keep their colour; the other half is darkened instead.
+    const leanTo = winner ?? selected
+    const lean = winner ? WinnerSplit : PickSplit
+    const split = leanTo === 'away' ? lean
+        : leanTo === 'home' ? 100 - lean
         : EvenSplit
 
     const winnerMark = (props?: { onLogo: boolean; side: 'away' | 'home' }) => (
@@ -106,7 +118,15 @@ const MatchupHeading: React.FC<Props> = ({
         if (!team?.logo) {
             return null
         }
-        const logo = <MatchupTeamLogo $size={size} src={team.logo} alt="" />
+        const logo = (
+            <MatchupTeamLogo
+                $size={size}
+                $picked={selected === side}
+                $off={Boolean(selected) && selected !== side}
+                src={team.logo}
+                alt=""
+            />
+        )
 
         return markOnLogo && winner === side ? (
             <MatchupLogoStack>
@@ -125,15 +145,36 @@ const MatchupHeading: React.FC<Props> = ({
             ? winnerMark()
             : null
 
+    // Turns a team's half of the band into a radio button when the band is
+    // selectable; otherwise the half stays a plain div.
+    const sideProps = (side: 'away' | 'home') => selectable ? {
+        as: 'button' as const,
+        type: 'button' as const,
+        role: 'radio',
+        'aria-checked': selected === side,
+        disabled,
+        onClick: () => onSelect?.(side),
+        $side: side,
+        $picked: selected === side,
+        $off: Boolean(selected) && selected !== side,
+    } : {}
+
     return (
         <MatchupHeadingContainer
+            role={selectable ? 'radiogroup' : undefined}
+            aria-label={selectable
+                ? `Winner of ${awayTeam?.displayName ?? game.away.displayName} at ${homeTeam?.displayName ?? game.home.displayName}`
+                : undefined}
+            $selectable={selectable}
             $size={size}
             $band={tone === 'band'}
             $away={colors.away}
             $home={colors.home}
             $split={split}
+            $dim={selected === 'away' ? 'home' : selected === 'home' ? 'away' : undefined}
         >
             <MatchupTeam
+                {...sideProps('away')}
                 $align={leadingLogos ? 'start' : 'end'}
                 $lost={Boolean(winner) && winner !== 'away'}
                 $size={size}
@@ -143,7 +184,11 @@ const MatchupHeading: React.FC<Props> = ({
                     "@", which read as if it belonged to the wrong team. */}
                 {standaloneMark('away', awayTeam)}
                 {leadingLogos ? renderLogo(awayTeam, 'away') : null}
-                <MatchupTeamName $won={winner === 'away'} $size={size}>
+                <MatchupTeamName
+                    $won={winner === 'away' || selected === 'away'}
+                    $off={Boolean(selected) && selected !== 'away'}
+                    $size={size}
+                >
                     {renderName(
                         awayTeam?.displayName ?? game.away.displayName,
                         awayTeam?.abbreviation ?? game.away.abbreviation
@@ -157,9 +202,18 @@ const MatchupHeading: React.FC<Props> = ({
                 {meta ? <MatchupMeta>{meta}</MatchupMeta> : null}
             </MatchupCentre>
 
-            <MatchupTeam $align='start' $lost={Boolean(winner) && winner !== 'home'} $size={size}>
+            <MatchupTeam
+                {...sideProps('home')}
+                $align='start'
+                $lost={Boolean(winner) && winner !== 'home'}
+                $size={size}
+            >
                 {renderLogo(homeTeam, 'home')}
-                <MatchupTeamName $won={winner === 'home'} $size={size}>
+                <MatchupTeamName
+                    $won={winner === 'home' || selected === 'home'}
+                    $off={Boolean(selected) && selected !== 'home'}
+                    $size={size}
+                >
                     {renderName(
                         homeTeam?.displayName ?? game.home.displayName,
                         homeTeam?.abbreviation ?? game.home.abbreviation

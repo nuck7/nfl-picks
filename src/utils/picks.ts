@@ -1,6 +1,10 @@
 import { Game, Pick, PicksForm, Player } from '../types';
 import { getMatchupId } from './teams';
-import { PoolTimeZone, noonOnDayOf } from './timezone';
+import { PoolTimeZone, hourOnDayOf } from './timezone';
+
+// The default lock time, in the pool's timezone: 3 PM Pacific. That is before
+// a Thursday night kickoff (5:15 PM PT) on the day of the week's first game.
+export const DefaultLockHour = 15;
 
 // A slot for one game, with no team chosen yet. The two sides are filled in
 // from the matchup rather than left blank: the slot knows which game it is for.
@@ -51,7 +55,7 @@ export const countMadePicks = (entry: PicksForm, matchups: Game[]): number =>
 export const hasCompletePicks = (entry: PicksForm, matchups: Game[]): boolean =>
     matchups.length > 0 && countMadePicks(entry, matchups) === matchups.length
 
-// Picks lock at noon on the day of the week's first game, in the pool's own
+// Picks lock at DefaultLockHour (3 PM) on the day of the week's first game, in the pool's own
 // timezone -- one instant, the same for every viewer, which is then rendered in
 // each reader's local zone by formatDeadline.
 //
@@ -70,7 +74,7 @@ export const getPickDeadline = (games: Game[]): Date | undefined => {
         return undefined
     }
 
-    return noonOnDayOf(new Date(Math.min(...kickoffs)), PoolTimeZone)
+    return hourOnDayOf(new Date(Math.min(...kickoffs)), PoolTimeZone, DefaultLockHour)
 }
 
 // An admin's lock time for the week wins over the computed one. An unparseable

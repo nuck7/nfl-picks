@@ -1,17 +1,13 @@
 import { Button, FormField } from "grommet";
 import styled from "styled-components";
-import { Paper } from "../../utils/teamColors";
-import { border, color, motion, radius, space, typeStyle } from "../../theme";
+import { border, color, radius, space, typeStyle } from "../../theme";
 
 export const PickContainer = styled.div`
     display: flex;
     flex-direction: column;
-    /* The gap between one matchup and the next. It has to beat the gap INSIDE a
-       matchup by enough to group by proximity: at 24px against an internal 20px
-       the two were indistinguishable, so a day's games read as one long run of
-       bands and buttons and you had to work out which pair went with which
-       band. 12 inside against 40 between is the whole fix. */
-    margin-bottom: ${space[10]};
+    /* One band per game now, with no buttons underneath, so the games can
+       sit close together. MatchupRow adds 12px; this brings it to 16. */
+    margin-bottom: ${space[1]};
 `
 
 export const PointsContainer = styled.div`
@@ -39,14 +35,6 @@ export const StyledPointsFormField = styled(FormField)`
     max-width: 90%
 `
 
-export const TeamSelectContainer = styled.div`
-    /* No margin of its own. The only gap inside a matchup is MatchupRow's 12px,
-       which keeps the two buttons tight under the band they belong to; the
-       separation from the next matchup is PickContainer's job. Splitting it
-       across both is what made the two gaps converge in the first place. */
-    margin: 0;
-`
-
 export const SubmitButton = styled(Button)`
     border: 2px solid ${color.action};
     border-radius: ${radius.lg};
@@ -60,10 +48,11 @@ export const SubmitButton = styled(Button)`
         border-color: ${color.actionHover};
     }
 
+    /* Faded rather than greyed out: it is the same button, just not ready yet
+       (picks missing, saving, or the week locked). */
     &:disabled {
-        background: ${color.surface};
-        border-color: ${color.border};
-        color: ${color.inkFaint};
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 `
 
@@ -116,90 +105,6 @@ export const InstructionsSteps = styled.ol`
     li + li {
         margin-top: ${space[2]};
     }
-`
-
-/* --- Winner picker -------------------------------------------------------
- * Replaces a Select per game. Two cards, click one. The whole card is the hit
- * target rather than a radio dot, which is the point on a phone.
- * ---------------------------------------------------------------------- */
-
-export const TeamChoices = styled.div`
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: ${space[3]};
-`
-
-export const TeamChoice = styled.button<{
-    $selected: boolean
-    $background: string
-    $ink: string
-}>`
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: ${space[3]};
-    min-width: 0;
-    /* 8px against a 32px logo leaves the button 52px tall -- still well clear
-       of the 44px minimum tap target, which is the floor this padding is
-       really set by rather than by how it looks. */
-    padding: ${space[2]} ${space[4]};
-    cursor: pointer;
-    text-align: left;
-    font-family: inherit;
-    ${typeStyle('body')}
-    border-radius: ${radius.lg};
-    transition: background-color ${motion.fast} ${motion.ease},
-                border-color ${motion.fast} ${motion.ease};
-
-    /* Unselected is a plain hairline card; selected fills with the team's own
-       colour and takes the ink that colour needs. The 2px border is present in
-       both states so selecting never shifts the layout by a pixel. */
-    border: 2px solid ${({ $selected, $background }) => ($selected ? $background : color.border)};
-    background: ${({ $selected, $background }) => ($selected ? $background : color.surface)};
-    color: ${({ $selected, $ink }) => ($selected ? $ink : color.ink)};
-    font-weight: ${({ $selected }) => ($selected ? 500 : 400)};
-
-    &:hover:not(:disabled) {
-        border-color: ${({ $selected, $background }) => ($selected ? $background : color.borderStrong)};
-        background: ${({ $selected, $background }) => ($selected ? $background : color.surfaceHover)};
-    }
-
-    &:disabled {
-        cursor: default;
-        opacity: 0.55;
-    }
-
-    @media (prefers-contrast: more) {
-        background: ${color.surface};
-        color: ${color.ink};
-        border-color: ${({ $selected }) => ($selected ? color.ink : color.border)};
-    }
-`
-
-export const TeamChoiceLogo = styled.img`
-    height: 28px;
-    width: 28px;
-    flex: none;
-    object-fit: contain;
-    /* Same white chip as the band: a team's own mark over its own colour would
-       otherwise partly disappear. */
-    box-sizing: content-box;
-    padding: 2px;
-    background: #ffffff;
-    border-radius: 30%;
-`
-
-export const TeamChoiceName = styled.span`
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-`
-
-export const TeamChoiceCheck = styled.span`
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    flex: none;
 `
 
 export const SubmitRow = styled.div`

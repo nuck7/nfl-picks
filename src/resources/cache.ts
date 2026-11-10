@@ -131,7 +131,7 @@ export const seedSeason = async (
 
     // The week's default lock time, stored where the rules can reach it. The
     // rules refuse a member anyone else's picks until the week locks, and they
-    // cannot derive "noon on the day of the first game" from an array of games
+    // cannot derive "3 PM on the day of the first game" from an array of games
     // -- so the seed does the deriving once, here, for the whole season.
     //
     // merge, and a separate field from the admin's lockAt override: re-seeding

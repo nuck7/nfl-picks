@@ -789,7 +789,7 @@ const Admin = () => {
                     <Hint>
                         {currentWeek.loading
                             ? 'Loading this week\u2026'
-                            : `Week ${currentWeek.week} of the ${currentWeek.season} season. Picks lock at the time below; by default that is noon on the day of the week's first game.`}
+                            : `Week ${currentWeek.week} of the ${currentWeek.season} season. Picks lock at the time below; by default that is 3 PM Pacific on the day of the week's first game.`}
                     </Hint>
                     <Form onSubmit={saveLock}>
                         <LockRow>
