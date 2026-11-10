@@ -7,7 +7,7 @@
  * ------------------------------------------------------------------------ */
 
 // Where the pool is. The lock has to be ONE instant for everyone: resolving
-// "noon" against each viewer's own clock handed two people in different zones
+// "3 PM" against each viewer's own clock handed two people in different zones
 // two different deadlines, neither of which matched the defaultLockAtMs the
 // Firestore rules enforce -- and for a viewer far enough east it landed after
 // kickoff, which is a deadline that locks nothing. Viewers elsewhere are not
@@ -59,14 +59,14 @@ const fromZonedWallClock = (wallClockMs: number, timeZone: string): Date => {
     return new Date(wallClockMs - zoneOffsetMs(new Date(guess), timeZone))
 }
 
-// Midday in `timeZone`, on whichever calendar day `instant` falls on THERE.
+// `hour`:00 in `timeZone`, on whichever calendar day `instant` falls on THERE.
 // The day is the zone's, not the caller's: a Sunday 9:30am kickoff in London is
 // still Sunday in Los Angeles, and a Thursday night game is still Thursday.
-export const noonOnDayOf = (instant: Date, timeZone: string): Date => {
+export const hourOnDayOf = (instant: Date, timeZone: string, hour: number): Date => {
     const day = toZonedWallClock(instant, timeZone)
 
     return fromZonedWallClock(
-        Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12, 0, 0, 0),
+        Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, 0, 0, 0),
         timeZone
     )
 }

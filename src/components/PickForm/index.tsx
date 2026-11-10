@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Form, Select, TextInput } from 'grommet';
-import { Checkmark } from 'grommet-icons';
 import { createEmptyPickFormState } from '../../constants';
 import { getPicksForPlayer, savePicks } from '../../resources/firebase';
 import { getPlayers, sortPlayersByName } from '../../resources/players';
@@ -8,17 +7,13 @@ import { CurrentUser, CurrentWeek, Game, GameTeam, PicksForm, Player, TeamsKeyed
 import { CurrentUserContext, CurrentWeekContext, PickDeadlineContext, SubmitPicksContext, TeamsContext } from '../../App';
 import { getMatchupId } from '../../utils/teams';
 import { alignPicksToMatchups, createEmptyPick } from '../../utils/picks';
-import { readableTextOn, resolveBandColors } from '../../utils/teamColors';
 import { formatDeadline, formatGameTime, groupMatchupsByDate } from '../../utils/schedule';
 import MatchupHeading from '../MatchupHeading';
-import VisuallyHidden from '../VisuallyHidden';
-import TeamName from '../TeamName';
 import DateSection, { MatchupRow } from '../DateSection';
 import {
     Instructions, InstructionsSteps, InstructionsTitle,
-    MatchupLabel, PickContainer, TeamSelectContainer, SubmitButton, PointsContainer,
+    MatchupLabel, PickContainer, SubmitButton, PointsContainer,
     StyledPointsFormField, PlayerSelectContainer, PlayerSelectLabel, LockedNotice,
-    TeamChoice, TeamChoiceCheck, TeamChoiceLogo, TeamChoiceName, TeamChoices,
     SubmitRow, SaveMessage, PickProgress,
 } from './index.styles';
 
@@ -110,6 +105,10 @@ const PicksForm = () => {
     )
 
     const pickedCount = formState.picks.filter((pick) => pick?.pickedTeam).length
+    // Every game and the tie breaker are required; the save button stays faded
+    // and disabled until both are done.
+    const tieBreakerMissing = formState.tieBreakerPoints === ''
+    const complete = matchups.length > 0 && pickedCount === matchups.length && !tieBreakerMissing
 
     // Clicking the selected team again clears it, which is what the Select's
     // clear button used to be for.
@@ -143,6 +142,12 @@ const PicksForm = () => {
             setSaveState({ status: 'error', message: 'Picks are closed for this week.' })
             return
         }
+        // Enter in the tie-breaker input submits the form even while the
+        // button is disabled.
+        if (!complete) {
+            setSaveState({ status: 'error', message: 'Pick every game and enter a tie breaker.' })
+            return
+        }
         // Without a week the document is unfindable: both the standings and this
         // form look picks up by week_id, so a blank one saves into a void.
         if (!weekId) {
@@ -174,49 +179,6 @@ const PicksForm = () => {
         }
     }
 
-    // `fill` is the colour that team occupies in the band directly above, not its
-    // raw primary. Three teams share #002a5c (DAL, NE, SEA) and two are both
-    // #000000 (LV, PIT), so a matchup between any pair of them would otherwise
-    // paint two identical buttons -- while the band beside it had already
-    // resolved one of them to its alternate.
-    const renderChoice = (matchup: Game, index: number, which: 'away' | 'home', fill: string) => {
-        const side: GameTeam = matchup[which]
-        const team = teams[side.id]
-        const selected = formState.picks[index]?.pickedTeam?.id === side.id
-        const background = fill
-        // The band clamps its ends so white always clears 3:1, which puts every
-        // team at or below 0.30 luminance -- but these labels are 16px body
-        // text, needing 4.5:1, so the ink is chosen per colour rather than
-        // assumed white.
-        const ink = readableTextOn(background)
-
-        return (
-            <TeamChoice
-                key={side.id}
-                type='button'
-                role='radio'
-                aria-checked={selected}
-                disabled={locked}
-                $selected={selected}
-                $background={background}
-                $ink={ink}
-                onClick={() => choose(matchup, index, side)}
-            >
-                {team?.logo ? <TeamChoiceLogo src={team.logo} alt='' /> : null}
-                <TeamChoiceName>
-                    <TeamName
-                        full={team?.displayName ?? side.displayName}
-                        abbreviation={team?.abbreviation ?? side.abbreviation}
-                    />
-                </TeamChoiceName>
-                {selected ? (
-                    <TeamChoiceCheck aria-hidden='true'><Checkmark size='18px' color='currentColor' /></TeamChoiceCheck>
-                ) : null}
-                <VisuallyHidden>{selected ? 'Selected' : 'Not selected'}</VisuallyHidden>
-            </TeamChoice>
-        )
-    }
-
     return (
         <Form onSubmit={handleSubmit}>
             {/* Hidden once the week closes -- an explainer for a form nobody can
@@ -226,17 +188,17 @@ const PicksForm = () => {
                     <InstructionsTitle>How to submit your picks</InstructionsTitle>
                     <InstructionsSteps>
                         <li>
-                            Pick a winner for every game by tapping one of the two
-                            teams. Tapping your pick again clears it.
+                            Tap a team in each game to pick the winner. Tap it
+                            again to clear it.
                         </li>
                         <li>
-                            Enter a tie breaker: the combined score of both teams in
+                            Required: enter a tie breaker, the combined score of both teams in
                             the last game of the week. It only decides the week if
                             two people finish level on correct picks, and the closest
                             guess takes it.
                         </li>
                         <li>
-                            Hit Submit picks. You can come back and change anything
+                            Hit Save picks. You can come back and change anything
                             until picks lock
                             {deadline ? ` on ${formatDeadline(deadline)}` : ''}.
                         </li>
@@ -275,19 +237,16 @@ const PicksForm = () => {
                         // Grouping reorders the matchups for display, so the pick
                         // slot is looked up by id rather than by position.
                         const index = pickIndexes.get(getMatchupId(matchup)) ?? -1
-                        // Same call MatchupHeading makes for this game, and the
-                        // result is memoised, so the buttons and the band above
-                        // them cannot disagree.
-                        const bandColors = resolveBandColors(
-                            teams[matchup.away.id],
-                            teams[matchup.home.id]
-                        )
+                        const pickedId = formState.picks[index]?.pickedTeam?.id
+                        const selected = pickedId === matchup.away.id ? 'away'
+                            : pickedId === matchup.home.id ? 'home'
+                            : undefined
 
                         return (
                             <PickContainer key={getMatchupId(matchup)}>
                                 <MatchupRow>
                                     {/* No showResult here: the answer must not
-                                        appear above the buttons you pick with. */}
+                                        appear on the band you pick with. */}
                                     <MatchupHeading
                                         size='medium'
                                         abbreviateOnMobile
@@ -295,17 +254,11 @@ const PicksForm = () => {
                                         teams={teams}
                                         game={matchup}
                                         meta={formatGameTime(matchup.date)}
+                                        selected={selected}
+                                        disabled={locked}
+                                        onSelect={(side) => choose(matchup, index, matchup[side])}
                                     />
                                 </MatchupRow>
-                                <TeamSelectContainer>
-                                    <TeamChoices
-                                        role='radiogroup'
-                                        aria-label={`Winner of ${matchup.away.displayName} at ${matchup.home.displayName}`}
-                                    >
-                                        {renderChoice(matchup, index, 'away', bandColors.away)}
-                                        {renderChoice(matchup, index, 'home', bandColors.home)}
-                                    </TeamChoices>
-                                </TeamSelectContainer>
                             </PickContainer>
                         )
                     })}
@@ -335,8 +288,8 @@ const PicksForm = () => {
                 </StyledPointsFormField>
             </PointsContainer>
             <SubmitRow>
-                <SubmitButton type="submit" disabled={locked || saveState.status === 'saving'}>
-                    {saveState.status === 'saving' ? 'Saving…' : 'Submit picks'}
+                <SubmitButton type="submit" disabled={locked || !complete || saveState.status === 'saving'}>
+                    {saveState.status === 'saving' ? 'Saving…' : 'Save picks'}
                 </SubmitButton>
                 {saveState.status === 'saved' ? (
                     <SaveMessage role='status'>Picks saved.</SaveMessage>
@@ -344,7 +297,10 @@ const PicksForm = () => {
                 {saveState.status === 'error' ? (
                     <SaveMessage role='alert' $error>{saveState.message}</SaveMessage>
                 ) : null}
-                <PickProgress>{pickedCount} of {matchups.length} picked</PickProgress>
+                <PickProgress>
+                    {pickedCount} of {matchups.length} picked
+                    {tieBreakerMissing ? ' · No tie breaker' : ''}
+                </PickProgress>
             </SubmitRow>
         </Form>
     );

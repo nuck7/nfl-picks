@@ -28,10 +28,12 @@ const scale = {
 // gone: the grid does the alignment that constant was faking, at any type size.
 export const MatchupHeadingContainer = styled.div<{
     $size: MatchupSize
+    $selectable?: boolean
     $band?: boolean
     $away: string
     $home: string
     $split: number
+    $dim?: 'away' | 'home'
 }>`
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -76,6 +78,52 @@ export const MatchupHeadingContainer = styled.div<{
         overflow: hidden;
     `}
 
+    /* Selectable: the two team halves are the buttons, so they take the band's
+       padding and stretch to its full height -- the whole half is the tap
+       target, edge to edge. */
+    ${({ $selectable, $dim }) => $selectable && css`
+        padding: 0;
+        align-items: stretch;
+        position: relative;
+        isolation: isolate;
+
+        /* The unpicked side goes dark. Drawn across the whole band as a
+           gradient that fades out past the centre, rather than as a box on that
+           half -- a box ended in a hard vertical line at the edge of the half.
+           One layer per side so switching sides cross-fades. */
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 260ms ease;
+        }
+        &::before {
+            background: linear-gradient(90deg,
+                rgba(0, 0, 0, 0.62) 0%,
+                rgba(0, 0, 0, 0.62) 30%,
+                rgba(0, 0, 0, 0) 68%);
+            opacity: ${$dim === 'away' ? 1 : 0};
+        }
+        &::after {
+            background: linear-gradient(270deg,
+                rgba(0, 0, 0, 0.62) 0%,
+                rgba(0, 0, 0, 0.62) 30%,
+                rgba(0, 0, 0, 0) 68%);
+            opacity: ${$dim === 'home' ? 1 : 0};
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            &::before,
+            &::after {
+                transition: none;
+            }
+        }
+    `}
+
     /* Colour is decoration; at forced-contrast the band goes flat and the
        structure carries the meaning on its own. */
     @media (prefers-contrast: more) {
@@ -84,7 +132,14 @@ export const MatchupHeadingContainer = styled.div<{
     }
 `
 
-export const MatchupTeam = styled.div<{ $align: 'start' | 'end'; $lost?: boolean; $size?: MatchupSize }>`
+export const MatchupTeam = styled.div<{
+    $align: 'start' | 'end'
+    $lost?: boolean
+    $size?: MatchupSize
+    $side?: 'away' | 'home'
+    $picked?: boolean
+    $off?: boolean
+}>`
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -103,12 +158,71 @@ export const MatchupTeam = styled.div<{ $align: 'start' | 'end'; $lost?: boolean
         opacity: 0.6;
         filter: saturate(0.25);
     `}
+
+    /* Only set when the half is a button (the pick form). */
+    ${({ $side, $picked, $size = 'full' }) => $side && css`
+        position: relative;
+        z-index: 1;
+        appearance: none;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        padding: ${scale[$size].pad};
+        cursor: pointer;
+        /* Rounded on the band's outer corners only, so the dark overlay and
+           hover wash follow the band's shape. */
+        border-radius: ${$side === 'away'
+            ? `${radius.md} 0 0 ${radius.md}`
+            : `0 ${radius.md} ${radius.md} 0`};
+        transition: background-color 220ms ease, opacity 220ms ease, filter 220ms ease;
+
+        /* The pick is shown by brightness and size, not a symbol. The unpicked
+           side is darkened by the band (MatchupHeadingContainer), its name
+           fades and its logo turns grey (MatchupTeamLogo); the picked half
+           brightens. A brightness gap rather than a hue swap, so it still
+           reads for colour-blind players. */
+
+        ${$picked && css`
+            filter: saturate(1.2) brightness(1.08);
+        `}
+
+        /* Real pointers only: on a phone :hover sticks after a tap, which
+           left a lighter box with a hard edge on the half just tapped. */
+        @media (hover: hover) {
+            &:hover:not(:disabled) {
+                background: rgba(255, 255, 255, 0.08);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+        }
+
+        &:disabled {
+            cursor: default;
+        }
+
+        /* The band clips anything outside it, so the focus ring sits inside. */
+        &:focus-visible {
+            outline: 2px solid ${Paper};
+            outline-offset: -7px;
+        }
+
+        @media (prefers-contrast: more) {
+            ${$picked && css`box-shadow: inset 0 0 0 3px ${Ink};`}
+        }
+    `}
 `
 
-export const MatchupTeamName = styled.span<{ $won?: boolean; $size?: MatchupSize }>`
+export const MatchupTeamName = styled.span<{ $won?: boolean; $off?: boolean; $size?: MatchupSize }>`
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: ${({ $won }) => ($won ? font.medium : font.regular)};
+    opacity: ${({ $off }) => ($off ? 0.55 : 1)};
+    transition: opacity 220ms ease;
 
     /* The grid shows a code, not a name, and there is no honest way to ellipse
        "WSH" -- "W..." is not a team. So it never shrinks: either the column is
@@ -140,7 +254,7 @@ export const MatchupTeamName = styled.span<{ $won?: boolean; $size?: MatchupSize
 // Rounded square, not a circle: object-fit fits the mark to the square content
 // box, whose corners fall outside a 50% radius, so a disc either clips wide
 // marks or shrinks every mark by 30% to inscribe them.
-export const MatchupTeamLogo = styled.img<{ $size: MatchupSize }>`
+export const MatchupTeamLogo = styled.img<{ $size: MatchupSize; $picked?: boolean; $off?: boolean }>`
     height: ${({ $size }) => scale[$size].logo};
     width: ${({ $size }) => scale[$size].logo};
     flex: none;
@@ -149,6 +263,28 @@ export const MatchupTeamLogo = styled.img<{ $size: MatchupSize }>`
     padding: ${({ $size }) => scale[$size].chip};
     background: ${Paper};
     border-radius: 30%;
+    transition: transform 220ms ease, filter 220ms ease, background-color 220ms ease,
+                box-shadow 220ms ease, opacity 220ms ease;
+
+    /* Pick form only. The picked logo pops: bigger, lifted off the band. A
+       transform, so the band's height never changes. */
+    ${({ $picked }) => $picked && css`
+        transform: scale(1.22);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+    `}
+
+    /* The unpicked logo goes dark: smaller, grey, on a dim chip, so only the
+       pick keeps a bright white chip and full colour. */
+    ${({ $off }) => $off && css`
+        transform: scale(0.88);
+        filter: grayscale(1);
+        background: rgba(255, 255, 255, 0.28);
+        opacity: 0.7;
+    `}
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
 `
 
 export const MatchupCentre = styled.div`
@@ -160,6 +296,9 @@ export const MatchupCentre = styled.div`
     /* em, not a space token: this gutter has to stay in proportion to the team
        names either side of it, and a fixed 20px crowded the smaller scales. */
     padding: 0 0.85em;
+    /* Above the band's dark overlay on the pick form. */
+    position: relative;
+    z-index: 1;
 `
 
 // Deliberately smaller and quieter than the team names. At full size it sat as

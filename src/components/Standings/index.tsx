@@ -463,7 +463,7 @@ const Standings = () => {
                 return <MatchupHeading size='grid' showResult tone='band' teams={teams} game={matchup} />
             },
             footer: (
-                <FooterStack>
+                <FooterStack $wrap>
                     <RecordLabel>Week record</RecordLabel>
                     {/* The answer, beside the row of guesses at it, so the
                         closest one can be read off the table rather than

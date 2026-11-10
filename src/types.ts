@@ -199,7 +199,7 @@ export type WeekSettings = {
   // gates a member's read of anyone else's picks, and the string above is what
   // the UI speaks. Written and cleared together with lockAt.
   lockAtMs?: number;
-  // The deadline derived from the schedule (noon on the day of the week's first
+  // The deadline derived from the schedule (3 PM Pacific on the day of the week's first
   // game), written for every week by the season seed so the rules always have a
   // lock time to compare against. The override wins when present.
   defaultLockAt?: string;

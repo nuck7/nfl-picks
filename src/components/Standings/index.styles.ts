@@ -351,6 +351,18 @@ export const TableScroll = styled.div`
         }
     }
 
+    /* grommet pins a column's header and body cells but never its footer cell
+       (Footer.js builds cellPin for a pinned column, then passes pin), so the
+       labels under the Matchups column scrolled away and the player totals
+       slid over them. Background and edge match dataTable.pinned.footer. */
+    tfoot tr > :first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: ${color.surfaceSunken};
+        box-shadow: inset -1px 0 0 ${color.border};
+    }
+
     -webkit-overflow-scrolling: touch;
     /* Roughly the nav, the heading and the leader banner. A max, so short weeks
        still size to their content rather than leaving dead space. */
@@ -373,14 +385,17 @@ export const TableNote = styled.p`
     max-width: 62ch;
 `
 
-export const FooterStack = styled.div<{ $align?: 'start' | 'center' }>`
+export const FooterStack = styled.div<{ $align?: 'start' | 'center'; $wrap?: boolean }>`
     display: flex;
     flex-direction: column;
     align-items: ${({ $align }) => ($align === 'center' ? 'center' : 'flex-start')};
     gap: ${space[1]};
     /* A player with no picks has no tiles to widen their column, so "0-0"
-       would wrap and drop the tie breaker off the shared baseline. */
-    white-space: nowrap;
+       would wrap and drop the tie breaker off the shared baseline. The labels
+       under the pinned Matchups column wrap instead: "Tie breaker -- 29
+       actual" is wider than that column on a phone, and the cell is sticky,
+       so overflow would paint across the player columns. */
+    white-space: ${({ $wrap }) => ($wrap ? 'normal' : 'nowrap')};
 `
 
 export const TieBreakerValue = styled.div`
