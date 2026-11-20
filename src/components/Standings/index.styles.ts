@@ -331,6 +331,13 @@ export const TableScroll = styled.div`
         margin: 0 -${space[5]};
     }
 
+    /* Backs up the DataTable's verticalAlign: grommet's header Box is
+       height:100% of the cell, which only helps if the cell itself puts its
+       content at the bottom. */
+    thead th {
+        vertical-align: bottom;
+    }
+
     /* The pinned Matchups column, which grommet's column size prop does not
        reach -- so its floor is CSS. Two floors, because the column's contents
        differ by width: from the mobile breakpoint up it draws both logos, both

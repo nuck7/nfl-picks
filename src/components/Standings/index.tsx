@@ -743,6 +743,11 @@ const Standings = () => {
                     // is enough now that the tiles carry the structure.
                     border={{ body: { side: 'bottom', color: color.border } }}
                     pad={{ body: { horizontal: 'xsmall', vertical: 'xsmall' } }}
+                    // Header cells hang from the bottom, so every player's
+                    // payment badge lands on one line however many lines their
+                    // name wraps to. Overrides the columns' 'middle', which only
+                    // the body cells need.
+                    verticalAlign={{ header: 'bottom' }}
                 />
             </TableScroll>
 

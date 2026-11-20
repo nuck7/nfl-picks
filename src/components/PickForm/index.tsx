@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Select, TextInput } from 'grommet';
 import { createEmptyPickFormState } from '../../constants';
 import { getPicksForPlayer, savePicks } from '../../resources/firebase';
@@ -14,8 +14,12 @@ import {
     Instructions, InstructionsSteps, InstructionsTitle,
     MatchupLabel, PickContainer, SubmitButton, PointsContainer,
     StyledPointsFormField, PlayerSelectContainer, PlayerSelectLabel, LockedNotice,
-    SubmitRow, SaveMessage, PickProgress,
+    StickyBar, BarInner, BarSpacer, BarStatus, BarPrimary, BarSecondary, NextButton,
 } from './index.styles';
+import { Checkmark, Down } from 'grommet-icons';
+
+// The tie breaker's slot in the "Next missing" cycle, after every game.
+const TieBreakerKey = 'tieBreaker'
 
 type SaveState =
     | { status: 'idle' }
@@ -104,11 +108,68 @@ const PicksForm = () => {
         [matchups]
     )
 
+    const sections = useMemo(() => groupMatchupsByDate(matchups), [matchups])
+
     const pickedCount = formState.picks.filter((pick) => pick?.pickedTeam).length
+    const gamesLeft = matchups.length - pickedCount
     // Every game and the tie breaker are required; the save button stays faded
     // and disabled until both are done.
     const tieBreakerMissing = formState.tieBreakerPoints === ''
-    const complete = matchups.length > 0 && pickedCount === matchups.length && !tieBreakerMissing
+    const complete = matchups.length > 0 && gamesLeft === 0 && !tieBreakerMissing
+
+    // Everything still to fill in, in the order it appears on the page --
+    // grouping by date reorders the games, so this walks the sections rather
+    // than `matchups`.
+    const missing = useMemo(() => {
+        const keys = sections
+            .flatMap((section) => section.matchups)
+            .map(getMatchupId)
+            .filter((id) => !formState.picks[pickIndexes.get(id) ?? -1]?.pickedTeam)
+        return tieBreakerMissing ? [...keys, TieBreakerKey] : keys
+    }, [sections, formState.picks, pickIndexes, tieBreakerMissing])
+
+    // One element per game (and the tie breaker), so "Next missing" can scroll
+    // to it.
+    const targets = useRef(new Map<string, HTMLElement>())
+    const setTarget = (key: string) => (element: HTMLElement | null) => {
+        if (element) {
+            targets.current.set(key, element)
+        } else {
+            targets.current.delete(key)
+        }
+    }
+    // The last thing "Next missing" jumped to. Pressing it again moves on to
+    // the next gap rather than landing on the same one if it is still empty.
+    const lastJump = useRef<string | undefined>(undefined)
+
+    const jumpToNextMissing = () => {
+        if (!missing.length) {
+            return
+        }
+        const order = [...sections.flatMap((section) => section.matchups).map(getMatchupId), TieBreakerKey]
+        const from = lastJump.current ? order.indexOf(lastJump.current) : -1
+        const key = missing.find((id) => order.indexOf(id) > from) ?? missing[0]
+        lastJump.current = key
+
+        const element = targets.current.get(key)
+        if (!element) {
+            return
+        }
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        element.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' })
+        // Focus the first team (or the input) so a keyboard user lands where
+        // the gap is, not back on the button.
+        element.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled)')
+            ?.focus({ preventScroll: true })
+    }
+
+    // The dock's two lines. Games first; the tie breaker moves up to the top
+    // line once every game is picked.
+    const gamesLeftText = `${gamesLeft} ${gamesLeft === 1 ? 'game' : 'games'} left`
+    const primaryStatus = gamesLeft > 0 ? gamesLeftText
+        : tieBreakerMissing ? 'No tie breaker'
+        : 'All picked'
+    const secondaryStatus = gamesLeft > 0 && tieBreakerMissing ? 'No tie breaker' : undefined
 
     // Clicking the selected team again clears it, which is what the Select's
     // clear button used to be for.
@@ -231,7 +292,7 @@ const PicksForm = () => {
                     />
                 </PlayerSelectContainer>
             ) : null}
-            {groupMatchupsByDate(matchups).map((section) => (
+            {sections.map((section) => (
                 <DateSection key={section.key} date={section.date}>
                     {section.matchups.map((matchup) => {
                         // Grouping reorders the matchups for display, so the pick
@@ -243,7 +304,7 @@ const PicksForm = () => {
                             : undefined
 
                         return (
-                            <PickContainer key={getMatchupId(matchup)}>
+                            <PickContainer key={getMatchupId(matchup)} ref={setTarget(getMatchupId(matchup))}>
                                 <MatchupRow>
                                     {/* No showResult here: the answer must not
                                         appear on the band you pick with. */}
@@ -264,7 +325,7 @@ const PicksForm = () => {
                     })}
                 </DateSection>
             ))}
-            <PointsContainer>
+            <PointsContainer ref={setTarget(TieBreakerKey)}>
                 <MatchupLabel>
                     Tie Breaker Points
                 </MatchupLabel>
@@ -287,21 +348,46 @@ const PicksForm = () => {
                     />
                 </StyledPointsFormField>
             </PointsContainer>
-            <SubmitRow>
-                <SubmitButton type="submit" disabled={locked || !complete || saveState.status === 'saving'}>
-                    {saveState.status === 'saving' ? 'Saving…' : 'Save picks'}
-                </SubmitButton>
-                {saveState.status === 'saved' ? (
-                    <SaveMessage role='status'>Picks saved.</SaveMessage>
-                ) : null}
-                {saveState.status === 'error' ? (
-                    <SaveMessage role='alert' $error>{saveState.message}</SaveMessage>
-                ) : null}
-                <PickProgress>
-                    {pickedCount} of {matchups.length} picked
-                    {tieBreakerMissing ? ' · No tie breaker' : ''}
-                </PickProgress>
-            </SubmitRow>
+            <BarSpacer />
+            {/* Docked to the bottom of the screen, so what is left to pick is
+                always in view. The save result replaces the progress lines
+                until the next change. */}
+            <StickyBar>
+                <BarInner>
+                    <BarStatus>
+                        {saveState.status === 'saved' ? (
+                            <BarPrimary role='status'>
+                                <Checkmark size='14px' color='currentColor' />
+                                Picks saved
+                            </BarPrimary>
+                        ) : saveState.status === 'error' ? (
+                            <>
+                                <BarPrimary>Not saved</BarPrimary>
+                                <BarSecondary role='alert' title={saveState.message}>
+                                    {saveState.message}
+                                </BarSecondary>
+                            </>
+                        ) : (
+                            <>
+                                <BarPrimary>
+                                    {complete ? <Checkmark size='14px' color='currentColor' /> : null}
+                                    {primaryStatus}
+                                </BarPrimary>
+                                {secondaryStatus ? <BarSecondary>{secondaryStatus}</BarSecondary> : null}
+                            </>
+                        )}
+                    </BarStatus>
+                    {!locked && missing.length ? (
+                        <NextButton type='button' aria-label='Next missing pick' onClick={jumpToNextMissing}>
+                            Next
+                            <Down size='12px' color='currentColor' />
+                        </NextButton>
+                    ) : null}
+                    <SubmitButton type="submit" disabled={locked || !complete || saveState.status === 'saving'}>
+                        {saveState.status === 'saving' ? 'Saving…' : 'Save picks'}
+                    </SubmitButton>
+                </BarInner>
+            </StickyBar>
         </Form>
     );
 }

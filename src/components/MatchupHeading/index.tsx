@@ -94,6 +94,11 @@ const MatchupHeading: React.FC<Props> = ({
     )
 
     const selectable = Boolean(onSelect)
+    // On the pick form a side is "off" -- band darkened, name faded, logo
+    // grey -- whenever it isn't the pick. With no pick yet that is both
+    // sides, so an unpicked game reads as dark and unfinished beside the ones
+    // already lit up.
+    const isOff = (side: 'away' | 'home') => selectable && selected !== side
     const winner = showResult ? getWinningSideKey(game) : undefined
     // A pick leans the band towards that team, but less than a final result
     // does -- both teams keep their colour; the other half is darkened instead.
@@ -122,7 +127,7 @@ const MatchupHeading: React.FC<Props> = ({
             <MatchupTeamLogo
                 $size={size}
                 $picked={selected === side}
-                $off={Boolean(selected) && selected !== side}
+                $off={isOff(side)}
                 src={team.logo}
                 alt=""
             />
@@ -156,7 +161,7 @@ const MatchupHeading: React.FC<Props> = ({
         onClick: () => onSelect?.(side),
         $side: side,
         $picked: selected === side,
-        $off: Boolean(selected) && selected !== side,
+        $off: isOff(side),
     } : {}
 
     return (
@@ -171,7 +176,7 @@ const MatchupHeading: React.FC<Props> = ({
             $away={colors.away}
             $home={colors.home}
             $split={split}
-            $dim={selected === 'away' ? 'home' : selected === 'home' ? 'away' : undefined}
+            $dim={!selectable ? undefined : selected === 'away' ? 'home' : selected === 'home' ? 'away' : 'both'}
         >
             <MatchupTeam
                 {...sideProps('away')}
@@ -186,7 +191,7 @@ const MatchupHeading: React.FC<Props> = ({
                 {leadingLogos ? renderLogo(awayTeam, 'away') : null}
                 <MatchupTeamName
                     $won={winner === 'away' || selected === 'away'}
-                    $off={Boolean(selected) && selected !== 'away'}
+                    $off={isOff('away')}
                     $size={size}
                 >
                     {renderName(
@@ -211,7 +216,7 @@ const MatchupHeading: React.FC<Props> = ({
                 {renderLogo(homeTeam, 'home')}
                 <MatchupTeamName
                     $won={winner === 'home' || selected === 'home'}
-                    $off={Boolean(selected) && selected !== 'home'}
+                    $off={isOff('home')}
                     $size={size}
                 >
                     {renderName(

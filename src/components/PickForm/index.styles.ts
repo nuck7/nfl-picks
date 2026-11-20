@@ -1,6 +1,6 @@
 import { Button, FormField } from "grommet";
-import styled from "styled-components";
-import { border, color, radius, space, typeStyle } from "../../theme";
+import styled, { css } from "styled-components";
+import { border, color, layout, media, motion, radius, space, typeStyle } from "../../theme";
 
 export const PickContainer = styled.div`
     display: flex;
@@ -35,17 +35,37 @@ export const StyledPointsFormField = styled(FormField)`
     max-width: 90%
 `
 
+// Both bar buttons: compact, one height, on the dark dock. The global focus
+// ring is the navy accent, which vanishes on chrome, so these ring in white.
+const barButton = css`
+    ${typeStyle('label')}
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${space[1]};
+    height: 38px;
+    border: none;
+    border-radius: ${radius.md};
+    white-space: nowrap;
+    transition: background-color ${motion.fast} ${motion.ease},
+                opacity ${motion.fast} ${motion.ease};
+
+    &:focus-visible {
+        outline: 2px solid ${color.inkInverse};
+        outline-offset: 2px;
+    }
+`
+
+// The primary action, inverted for the dark dock: a light button on chrome,
+// the way the site's dark buttons sit on a light page.
 export const SubmitButton = styled(Button)`
-    border: 2px solid ${color.action};
-    border-radius: ${radius.lg};
-    padding: ${space[3]} ${space[8]};
-    background: ${color.action};
-    color: ${color.onAction};
-    font-weight: 500;
+    ${barButton}
+    padding: 0 ${space[4]};
+    background: ${color.inkInverse};
+    color: ${color.chrome};
 
     &:hover:not(:disabled) {
-        background: ${color.actionHover};
-        border-color: ${color.actionHover};
+        opacity: 0.88;
     }
 
     /* Faded rather than greyed out: it is the same button, just not ready yet
@@ -107,24 +127,101 @@ export const InstructionsSteps = styled.ol`
     }
 `
 
-export const SubmitRow = styled.div`
+// A dock across the bottom of the screen in the nav bar's chrome -- the header
+// mirrored at the foot of the page -- so what is left to pick, and the way to
+// get to it, never scrolls away. Fixed rather than sticky: the form sits inside
+// the page card, and only a fixed bar can reach the screen edges.
+export const StickyBar = styled.div`
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Level with the nav bar; grommet's drawers and menus (20+) cover it. */
+    z-index: 10;
+    padding: ${space[3]} 0;
+    /* Clears the home indicator on notched phones. */
+    padding-bottom: max(${space[3]}, env(safe-area-inset-bottom));
+    background: ${color.chrome};
+    color: ${color.inkInverse};
+    /* A soft lift rather than a hairline, so the page meets the dock without
+       a hard edge. */
+    box-shadow: 0 -8px 24px rgba(26, 24, 22, 0.14);
+`
+
+// Lines the dock's contents up with the page card's content above it: the
+// same max width as Main, inset by Main's gutter, the card's border and the
+// card's padding.
+export const BarInner = styled.div`
     display: flex;
     align-items: center;
-    gap: ${space[4]};
-    flex-wrap: wrap;
-    margin-top: ${space[8]};
-    padding-top: ${space[6]};
-    border-top: ${border.hairline};
+    gap: ${space[2]};
+    max-width: ${layout.maxWidth};
+    margin: 0 auto;
+    padding: 0 calc(${layout.gutter} + ${space[8]} + 1px);
+
+    ${media.upToMobile} {
+        padding: 0 calc(${layout.gutterMobile} + ${space[5]} + 1px);
+    }
 `
 
-export const SaveMessage = styled.div<{ $error?: boolean }>`
-    ${typeStyle('meta')}
-    color: ${({ $error }) => ($error ? color.negative : color.inkMuted)};
+// Holds the page open by the dock's height, so the tie breaker and the last
+// game can scroll clear of it.
+export const BarSpacer = styled.div`
+    height: calc(80px + env(safe-area-inset-bottom));
 `
 
-export const PickProgress = styled.div`
-    ${typeStyle('meta')}
-    color: ${color.inkMuted};
-    margin-left: auto;
+// Two short lines: what is left, then the tie breaker if that is missing too.
+// Two lines rather than one joined with a dot, which did not fit beside the
+// buttons on a phone.
+export const BarStatus = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
     font-variant-numeric: tabular-nums;
+`
+
+export const BarPrimary = styled.span`
+    ${typeStyle('label')}
+    display: flex;
+    align-items: center;
+    gap: ${space[1]};
+    color: ${color.inkInverse};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    /* grommet-icons paint from their own theme; same fix as the nav bar. */
+    svg {
+        flex: none;
+        fill: currentColor;
+        stroke: currentColor;
+    }
+`
+
+export const BarSecondary = styled.span`
+    ${typeStyle('caption')}
+    color: ${color.inkInverseMuted};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`
+
+// Secondary to Save: the nav bar's hover wash at rest, its active wash on
+// hover, so it reads as part of the same dark surface.
+export const NextButton = styled(Button)`
+    ${barButton}
+    padding: 0 ${space[3]};
+    background: ${color.surfaceInverseHover};
+    color: ${color.inkInverse};
+
+    &:hover {
+        background: ${color.surfaceInverseActive};
+    }
+
+    svg {
+        fill: currentColor;
+        stroke: currentColor;
+    }
 `
