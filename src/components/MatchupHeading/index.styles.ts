@@ -33,7 +33,7 @@ export const MatchupHeadingContainer = styled.div<{
     $away: string
     $home: string
     $split: number
-    $dim?: 'away' | 'home'
+    $dim?: 'away' | 'home' | 'both'
 }>`
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -90,7 +90,8 @@ export const MatchupHeadingContainer = styled.div<{
         /* The unpicked side goes dark. Drawn across the whole band as a
            gradient that fades out past the centre, rather than as a box on that
            half -- a box ended in a hard vertical line at the edge of the half.
-           One layer per side so switching sides cross-fades. */
+           One layer per side so switching sides cross-fades. Before any pick
+           both layers are on, so an unpicked game reads as dark. */
         &::before,
         &::after {
             content: "";
@@ -106,14 +107,14 @@ export const MatchupHeadingContainer = styled.div<{
                 rgba(0, 0, 0, 0.62) 0%,
                 rgba(0, 0, 0, 0.62) 30%,
                 rgba(0, 0, 0, 0) 68%);
-            opacity: ${$dim === 'away' ? 1 : 0};
+            opacity: ${$dim === 'away' || $dim === 'both' ? 1 : 0};
         }
         &::after {
             background: linear-gradient(270deg,
                 rgba(0, 0, 0, 0.62) 0%,
                 rgba(0, 0, 0, 0.62) 30%,
                 rgba(0, 0, 0, 0) 68%);
-            opacity: ${$dim === 'home' ? 1 : 0};
+            opacity: ${$dim === 'home' || $dim === 'both' ? 1 : 0};
         }
 
         @media (prefers-reduced-motion: reduce) {
