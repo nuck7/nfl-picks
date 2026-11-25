@@ -1,4 +1,5 @@
 import { User, verifyBeforeUpdateEmail } from 'firebase/auth';
+import { LoginProvider } from '../types';
 import { auth } from './firebase.config';
 
 const PasswordProviderId = 'password';
@@ -44,6 +45,23 @@ export const getSocialProviderLabel = (user: User | null = auth.currentUser) => 
   }
 
   return ProviderLabels[provider.providerId] ?? provider.providerId;
+};
+
+const LoginProviders: Record<string, LoginProvider> = {
+  'google.com': 'google',
+  'twitter.com': 'twitter',
+  [PasswordProviderId]: 'password',
+};
+
+// How the account signs in, for the Login column on the admin page. A social
+// provider wins over a password linked alongside it, since that is the button
+// the player actually presses.
+export const getLoginProvider = (user: User | null): LoginProvider | undefined => {
+  const ids = user?.providerData.map((provider) => provider.providerId) ?? [];
+  const social = ids.find((id) => id !== PasswordProviderId && LoginProviders[id]);
+  const id = social ?? ids.find((candidate) => LoginProviders[candidate]);
+
+  return id ? LoginProviders[id] : undefined;
 };
 
 // Firebase mails a confirmation link to the new address and only moves the

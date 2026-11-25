@@ -154,6 +154,14 @@ describe('players', () => {
     );
   });
 
+  it('lets a signed-in user record how they log in', async () => {
+    const db = testEnv.authenticatedContext('fresh-uid', { email: 'fresh@example.com' }).firestore();
+    await assertSucceeds(setDoc(doc(db, 'players/fresh-uid'),
+      player({ name: 'Fresh', email: 'fresh@example.com', loginProvider: 'google' })));
+    await assertSucceeds(setDoc(doc(member(), 'players/member-uid'),
+      { loginProvider: 'password' }, { merge: true }));
+  });
+
   it('stops a member granting themselves admin', async () => {
     await assertFails(updateDoc(doc(member(), 'players/member-uid'), { role: 'admin' }));
   });

@@ -28,7 +28,12 @@ export type Player = {
   role: UserRole;
   // true = no login; an admin enters this player's picks for them.
   managed: boolean;
+  // How the player signs in, recorded on each sign-in. Absent for managed
+  // players and for accounts that have not signed in since it was added.
+  loginProvider?: LoginProvider;
 };
+
+export type LoginProvider = 'google' | 'twitter' | 'password';
 
 export type CurrentUser = {
   user?: Player;
@@ -208,7 +213,11 @@ export type WeekSettings = {
   // the picks and the results, but nothing is stored until an admin confirms it
   // on the Results tab -- and they can name someone else instead, which is what
   // makes this an override rather than a cache of the calculation. Absent means
-  // nobody has confirmed a winner yet, not that the week was a draw.
+  // nobody has confirmed a winner yet, not that the week was a draw. A week can
+  // be split, so this is a list; read it through getWeekWinnerIds, which also
+  // understands the single winnerPlayerId older documents carry.
+  winnerPlayerIds?: string[];
+  // Legacy single winner. Retired on the next save of the week's winners.
   winnerPlayerId?: string;
 };
 

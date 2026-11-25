@@ -101,16 +101,22 @@ export const getSeasonWeeks = async (
     .filter((settings) => parseWeekId(settings.weekId)?.season === season);
 };
 
-// The admin's confirmed winner for a week. An empty playerId clears it, which
-// puts the week back to having no recorded winner rather than recording nobody
-// -- the profile Results tab counts stored winners, so a blank string there
-// would be a week somebody "won" under an empty name.
-export const setWeekWinner = (weekId: string, playerId: string) =>
+// Everyone recorded as winning a week. Older documents hold a single
+// winnerPlayerId; those read as a one-person list.
+export const getWeekWinnerIds = (settings?: WeekSettings): string[] =>
+  settings?.winnerPlayerIds
+  ?? (settings?.winnerPlayerId ? [settings.winnerPlayerId] : []);
+
+// The admin's confirmed winners for a week. An empty list clears the field,
+// which puts the week back to having no recorded winner. The legacy single
+// field is always removed so the two can never disagree.
+export const setWeekWinners = (weekId: string, playerIds: string[]) =>
   setDoc(
     doc(db, WeeksCollection, weekId),
     {
       weekId,
-      winnerPlayerId: playerId ? playerId : deleteField(),
+      winnerPlayerIds: playerIds.length ? playerIds : deleteField(),
+      winnerPlayerId: deleteField(),
     },
     { merge: true }
   );
