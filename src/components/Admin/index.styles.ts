@@ -1,4 +1,4 @@
-import { FormField, TextInput } from "grommet";
+import { Button, FormField, TextInput } from "grommet";
 import styled from "styled-components";
 import { border, color, layout, motion, radius, space, typeStyle } from "../../theme";
 
@@ -38,6 +38,23 @@ export const ErrorMessage = styled.div`
 
 export const RoleLabel = styled.span`
     white-space: nowrap;
+`
+
+export const RoleCell = styled.div`
+    min-width: 120px;
+    max-width: 150px;
+`
+
+// grommet-icons paint from their own theme, which resolves to near-black in
+// dark mode; currentColor makes the pencil follow the text colour.
+export const IconButton = styled(Button)`
+    display: inline-flex;
+    padding: ${space[1]};
+
+    svg {
+        fill: currentColor;
+        stroke: currentColor;
+    }
 `
 
 // Whether a player has an entry for the week the payments table is on. Three
@@ -105,6 +122,35 @@ export const PaymentCell = styled.div`
 export const WinnerCell = styled.div`
     min-width: 200px;
     max-width: 260px;
+`
+
+// The names in the closed winners field. Wraps rather than truncating, so a
+// split week shows everyone who shared it. Padding matches the theme's input.
+export const WinnerValue = styled.span`
+    display: block;
+    padding: 9px 15px;
+    color: ${color.ink};
+    white-space: normal;
+`
+
+// One player in the open winners list. The checkmark is what says "picked":
+// the theme's selected background alone is too faint to read at a glance.
+export const WinnerOption = styled.div<{ $selected: boolean; $active: boolean }>`
+    display: flex;
+    align-items: center;
+    gap: ${space[2]};
+    padding: ${space[2]} ${space[3]};
+    color: ${color.ink};
+    font-weight: ${({ $selected }) => ($selected ? 600 : 400)};
+    background: ${({ $active }) => ($active ? color.surfaceHover : 'transparent')};
+`
+
+// Reserves the tick's width on every row so names line up whether or not
+// they are picked.
+export const WinnerCheck = styled.span`
+    display: inline-flex;
+    width: 16px;
+    color: ${color.accent};
 `
 
 // The suggested winner and, when a tie was settled on it, the tie breaker that

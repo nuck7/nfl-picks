@@ -1,15 +1,18 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Button, DataTable, Form, Layer, Select, TextInput } from 'grommet';
+import { Checkmark, Edit } from 'grommet-icons';
 import { CurrentUserContext, CurrentWeekContext } from '../../App';
 import {
-    DuplicateEmailError, addManagedPlayer, getPlayers, setPlayerName, setPlayerRole,
-    sortPlayersByName,
+    DuplicateEmailError, GrantableRole, addManagedPlayer, getPlayers, setPlayerName,
+    setPlayerRole, sortPlayersByName,
 } from '../../resources/players';
 import { CurrentUser, CurrentWeek, DropdownOption, Game, PaymentMethod, Player, SeedSummary } from '../../types';
 import { makeWeekId } from '../../utils/espn';
 import { isAdmin, isOwner } from '../../utils/admin';
 import { InvalidEmailMessage, isValidEmail } from '../../utils/validation';
-import { getSeasonWeeks, getWeekSettings, setWeekLock, setWeekWinner } from '../../resources/weeks';
+import {
+    getSeasonWeeks, getWeekSettings, getWeekWinnerIds, setWeekLock, setWeekWinners,
+} from '../../resources/weeks';
 import { getWeekGames } from '../../resources/cache';
 import { fetchSeasonScoreboards, toGamesByWeek } from '../../resources/espn';
 import { getPicks } from '../../resources/firebase';
@@ -32,6 +35,7 @@ import {
     ConfirmText,
     ConfirmTitle,
     ErrorMessage,
+    IconButton,
     TabButton,
     TabList,
     TabPanel,
@@ -41,6 +45,7 @@ import {
     NameInput,
     PaymentCell,
     PickStatus,
+    RoleCell,
     RoleLabel,
     Hint,
     LockNote,
@@ -52,6 +57,9 @@ import {
     WeekSelectContainer,
     WeekSelectLabel,
     WinnerCell,
+    WinnerCheck,
+    WinnerOption,
+    WinnerValue,
 } from './index.styles';
 
 type AdminTab = 'settings' | 'payments' | 'results' | 'players'
@@ -80,7 +88,8 @@ type ResultRow = {
     weekId: string
     week: number
     label: string
-    winnerPlayerId?: string
+    // Empty until an admin records someone. More than one when the week is split.
+    winnerPlayerIds: string[]
     suggestion?: WeekSuggestion
 }
 
@@ -160,6 +169,23 @@ type WeekEntries = {
     made: Record<string, number>
 }
 
+const RoleOptions: { label: string; value: GrantableRole }[] = [
+    { label: 'Member', value: 'member' },
+    { label: 'Admin', value: 'admin' },
+]
+
+const LoginLabels: Record<NonNullable<Player['loginProvider']>, string> = {
+    google: 'Google',
+    twitter: 'X',
+    password: 'Password',
+}
+
+// Managed players have no login at all; an account that has not signed in
+// since the provider started being recorded shows a dash until it does.
+const loginLabel = (player: Player) => player.managed
+    ? 'Managed'
+    : player.loginProvider ? LoginLabels[player.loginProvider] : '\u2014'
+
 const tabId = (id: AdminTab) => `admin_tab_${id}`
 const panelId = (id: AdminTab) => `admin_panel_${id}`
 
@@ -178,10 +204,10 @@ const Admin = () => {
     const [editingId, setEditingId] = useState<string>()
     const [editingName, setEditingName] = useState('')
 
-    // The player whose access change is waiting to be confirmed. Admin is the
-    // one change on this page that hands someone else the ability to make it,
-    // so it is the one worth asking about twice.
-    const [confirmingRole, setConfirmingRole] = useState<Player>()
+    // The role change waiting to be confirmed. Admin is the one change on this
+    // page that hands someone else the ability to make it, so it is the one
+    // worth asking about twice.
+    const [confirmingRole, setConfirmingRole] = useState<{ player: Player; role: GrantableRole }>()
 
     const currentWeek = useContext<CurrentWeek>(CurrentWeekContext)
     const [lockValue, setLockValue] = useState('')
@@ -420,7 +446,7 @@ const Admin = () => {
                     weekId,
                     week: entry.week,
                     label: entry.label,
-                    winnerPlayerId: storedByWeekId.get(weekId)?.winnerPlayerId,
+                    winnerPlayerIds: getWeekWinnerIds(storedByWeekId.get(weekId)),
                     suggestion: suggestions[index],
                 }
             }))
@@ -445,13 +471,13 @@ const Admin = () => {
     // Nothing is stored until this runs: the suggestion is only ever a prefill
     // in the dropdown, so a week an admin has not looked at stays unrecorded
     // rather than being crowned by the calculation alone.
-    const changeWinner = async (row: ResultRow, playerId?: string) => {
+    const changeWinners = async (row: ResultRow, playerIds: string[]) => {
         setSavingWinner(row.weekId)
         try {
-            await setWeekWinner(row.weekId, playerId ?? '')
+            await setWeekWinners(row.weekId, playerIds)
             setResultRows((current) => current.map((existing) =>
                 existing.weekId === row.weekId
-                    ? { ...existing, winnerPlayerId: playerId }
+                    ? { ...existing, winnerPlayerIds: playerIds }
                     : existing
             ))
             setError(undefined)
@@ -550,14 +576,13 @@ const Admin = () => {
         }
     }
 
-    const changeRole = async (player: Player) => {
+    const changeRole = async (player: Player, nextRole: GrantableRole) => {
         // The rules are the real gate; this keeps a non-owner from firing a
         // write that can only come back denied.
         if (!currentUser.isOwner) {
             setError('Only the pool owner can change who is an admin.')
             return
         }
-        const nextRole = isAdmin(player) ? 'member' : 'admin'
         setSaving(player.id)
         try {
             await setPlayerRole(player.id, nextRole)
@@ -580,12 +605,12 @@ const Admin = () => {
         if (!confirmingRole) {
             return
         }
-        await changeRole(confirmingRole)
+        await changeRole(confirmingRole.player, confirmingRole.role)
         setConfirmingRole(undefined)
     }
 
     const cancelChangeRole = () => {
-        if (saving === confirmingRole?.id) {
+        if (saving === confirmingRole?.player.id) {
             return
         }
         setConfirmingRole(undefined)
@@ -683,6 +708,10 @@ const Admin = () => {
     // A rename therefore moves its row to the name's new place once saved, which
     // is the same thing that would happen on the next load.
     const sortedPlayers = useMemo(() => sortPlayersByName(players), [players])
+    const playerNames = useMemo(
+        () => new Map(players.map((player) => [player.id, player.name])),
+        [players]
+    )
 
     // Ordered for the job this tab is for. Anyone with an entry this week is
     // someone a payment may be due from, so they come first and the people who
@@ -714,7 +743,7 @@ const Admin = () => {
     // header still draws its borders and claims its width, which reads as a
     // stray fourth column. Leave it out entirely unless a row can use it.
     const hasSuggestionToApply = resultRows.some((row) =>
-        row.suggestion && row.suggestion.leader.userId !== row.winnerPlayerId)
+        row.suggestion && !row.winnerPlayerIds.includes(row.suggestion.leader.userId))
 
     // Complete entries only, which is the same bar the standings use to decide
     // who gets a column -- so this number and the one on the standings agree.
@@ -1017,26 +1046,47 @@ const Admin = () => {
                             columns={[
                                 { property: 'label', header: 'Week' },
                                 {
-                                    property: 'winnerPlayerId',
-                                    header: 'Winner',
+                                    property: 'winnerPlayerIds',
+                                    header: 'Winners',
                                     render: (row: ResultRow) => (
                                         <WinnerCell>
                                             <Select
                                                 id={`winner_${row.weekId}`}
                                                 name={`winner_${row.weekId}`}
-                                                a11yTitle={`Winner of ${row.label}`}
+                                                a11yTitle={`Winners of ${row.label}`}
+                                                multiple
+                                                closeOnChange={false}
                                                 options={sortedPlayers}
                                                 labelKey='name'
                                                 valueKey={{ key: 'id', reduce: true }}
-                                                value={row.winnerPlayerId ?? ''}
+                                                value={row.winnerPlayerIds}
                                                 placeholder='Not recorded'
-                                                clear={{ label: 'Clear winner' }}
+                                                clear={{ label: 'Clear winners' }}
                                                 disabled={savingWinner === row.weekId}
-                                                onChange={({ value }) => changeWinner(
+                                                // grommet shows "multiple" once a
+                                                // second name is picked; every
+                                                // winner should be readable here.
+                                                valueLabel={row.winnerPlayerIds.length ? (
+                                                    <WinnerValue>
+                                                        {row.winnerPlayerIds
+                                                            .map((id) => playerNames.get(id) ?? 'Unknown player')
+                                                            .join(', ')}
+                                                    </WinnerValue>
+                                                ) : undefined}
+                                                onChange={({ value }) => changeWinners(
                                                     row,
-                                                    (value as string) || undefined
+                                                    (value as string[] | undefined) ?? []
                                                 )}
-                                            />
+                                            >
+                                                {(option: Player, _index: number, _options: Player[], state: { selected: boolean; active: boolean }) => (
+                                                    <WinnerOption $selected={state.selected} $active={state.active}>
+                                                        <WinnerCheck aria-hidden>
+                                                            {state.selected ? <Checkmark size='small' color='currentColor' /> : null}
+                                                        </WinnerCheck>
+                                                        {option.name}
+                                                    </WinnerOption>
+                                                )}
+                                            </Select>
                                         </WinnerCell>
                                     ),
                                 },
@@ -1080,17 +1130,17 @@ const Admin = () => {
                                         // Only offered when it would change
                                         // something, so a row that already
                                         // agrees carries no pointless button.
-                                        if (!row.suggestion
-                                            || row.suggestion.leader.userId === row.winnerPlayerId) {
+                                        const suggested = row.suggestion?.leader.userId
+                                        if (!suggested || row.winnerPlayerIds.includes(suggested)) {
                                             return null
                                         }
                                         return (
                                             <Button
                                                 secondary
                                                 type='button'
-                                                label={row.winnerPlayerId ? 'Use suggested' : 'Accept'}
+                                                label={row.winnerPlayerIds.length ? 'Add suggested' : 'Accept'}
                                                 disabled={savingWinner === row.weekId}
-                                                onClick={() => changeWinner(row, row.suggestion?.leader.userId)}
+                                                onClick={() => changeWinners(row, [...row.winnerPlayerIds, suggested])}
                                             />
                                         )
                                     },
@@ -1187,9 +1237,11 @@ const Admin = () => {
                                     ) : (
                                         <NameCell>
                                             {player.name}
-                                            <Button
+                                            <IconButton
                                                 plain
-                                                label={<SeedNote>Rename</SeedNote>}
+                                                icon={<Edit size='small' />}
+                                                a11yTitle={`Rename ${player.name}`}
+                                                tip='Rename'
                                                 onClick={() => {
                                                     setEditingId(player.id)
                                                     setEditingName(player.name)
@@ -1201,47 +1253,50 @@ const Admin = () => {
                             },
                             { property: 'email', header: 'Email' },
                             {
-                                property: 'managed',
-                                header: 'Type',
+                                property: 'loginProvider',
+                                header: 'Login',
                                 render: (player: Player) => (
-                                    <RoleLabel>{player.managed ? 'Managed' : 'Account'}</RoleLabel>
+                                    <RoleLabel>{loginLabel(player)}</RoleLabel>
                                 ),
                             },
                             {
                                 property: 'role',
                                 header: 'Role',
-                                render: (player: Player) => (
-                                    <RoleLabel>
-                                        {isOwner(player) ? 'Owner' : isAdmin(player) ? 'Admin' : 'Member'}
-                                    </RoleLabel>
-                                ),
-                            },
-                            // Only the owner hands out admin, so for every other
-                            // admin the column isn't there to be disabled -- the
-                            // hint below the table says who to ask instead. The
-                            // rules refuse the write either way; this is so the
-                            // page doesn't offer a button that always fails.
-                            ...(currentUser.isOwner ? [{
-                                property: 'id',
-                                header: 'Access',
                                 render: (player: Player) => {
-                                    // The owner's own row is locked: there is no
-                                    // hardcoded account to fall back on, so the one
-                                    // person who can grant admin must not be able to
-                                    // give away that power by accident.
-                                    if (player.id === currentUser.user?.id) {
-                                        return <SeedNote>You</SeedNote>
+                                    // Only the owner changes roles, and never the
+                                    // owner's own: there is no hardcoded account to
+                                    // fall back on, so that power must not be given
+                                    // away by accident. The rules refuse the write
+                                    // either way; this just doesn't offer it.
+                                    if (!currentUser.isOwner || isOwner(player)) {
+                                        return (
+                                            <RoleLabel>
+                                                {isOwner(player) ? 'Owner' : isAdmin(player) ? 'Admin' : 'Member'}
+                                            </RoleLabel>
+                                        )
                                     }
                                     return (
-                                        <Button
-                                            secondary
-                                            disabled={saving === player.id}
-                                            onClick={() => setConfirmingRole(player)}
-                                            label={isAdmin(player) ? 'Revoke admin' : 'Make admin'}
-                                        />
+                                        <RoleCell>
+                                            <Select
+                                                id={`role_${player.id}`}
+                                                name={`role_${player.id}`}
+                                                a11yTitle={`Role for ${player.name}`}
+                                                options={RoleOptions}
+                                                labelKey='label'
+                                                valueKey={{ key: 'value', reduce: true }}
+                                                value={isAdmin(player) ? 'admin' : 'member'}
+                                                disabled={saving === player.id}
+                                                onChange={({ value }) => {
+                                                    const role = value as GrantableRole
+                                                    if (role !== (isAdmin(player) ? 'admin' : 'member')) {
+                                                        setConfirmingRole({ player, role })
+                                                    }
+                                                }}
+                                            />
+                                        </RoleCell>
                                     )
                                 },
-                            }] : []),
+                            },
                         ]}
                     />
                 ) : (
@@ -1269,31 +1324,31 @@ const Admin = () => {
                 >
                     <ConfirmPanel>
                         <ConfirmTitle id='confirm_role_title'>
-                            {isAdmin(confirmingRole)
-                                ? `Revoke admin from ${confirmingRole.name}?`
-                                : `Make ${confirmingRole.name} an admin?`}
+                            {confirmingRole.role === 'member'
+                                ? `Revoke admin from ${confirmingRole.player.name}?`
+                                : `Make ${confirmingRole.player.name} an admin?`}
                         </ConfirmTitle>
                         <ConfirmText>
-                            {isAdmin(confirmingRole)
-                                ? `${confirmingRole.name} will go back to being a member: no admin page, no entering other people's picks, and no changing the lock time or payments. Their own picks are untouched.`
-                                : `${confirmingRole.name} will be able to add and rename players, enter anyone's picks, change the lock time and record payments. They will not be able to make anyone else an admin, or undo it if you revoke this later — that stays with you.`}
+                            {confirmingRole.role === 'member'
+                                ? `${confirmingRole.player.name} will go back to being a member: no admin page, no entering other people's picks, and no changing the lock time or payments. Their own picks are untouched.`
+                                : `${confirmingRole.player.name} will be able to add and rename players, enter anyone's picks, change the lock time and record payments. They will not be able to make anyone else an admin, or undo it if you revoke this later — that stays with you.`}
                         </ConfirmText>
                         <ConfirmActions>
                             <Button
                                 secondary
                                 type='button'
                                 label='Cancel'
-                                disabled={saving === confirmingRole.id}
+                                disabled={saving === confirmingRole.player.id}
                                 onClick={cancelChangeRole}
                             />
                             <Button
                                 primary
                                 type='button'
-                                disabled={saving === confirmingRole.id}
+                                disabled={saving === confirmingRole.player.id}
                                 onClick={confirmChangeRole}
-                                label={saving === confirmingRole.id
+                                label={saving === confirmingRole.player.id
                                     ? 'Saving…'
-                                    : isAdmin(confirmingRole) ? 'Revoke admin' : 'Make admin'}
+                                    : confirmingRole.role === 'member' ? 'Revoke admin' : 'Make admin'}
                             />
                         </ConfirmActions>
                     </ConfirmPanel>

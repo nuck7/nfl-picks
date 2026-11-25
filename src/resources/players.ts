@@ -5,6 +5,7 @@ import { addDoc, collection, doc, getDoc, getDocs, setDoc } from 'firebase/fires
 import { CurrentUser, Player, UserRole } from '../types';
 import { isAdmin, isOwner } from '../utils/admin';
 import { isValidEmail, normalizeEmail } from '../utils/validation';
+import { getLoginProvider } from './auth';
 import { auth, db } from './firebase.config';
 
 const PlayersCollection = 'players';
@@ -100,6 +101,11 @@ export const upsertCurrentPlayer = async (
     role: existing?.role ?? 'member',
     managed: false,
   };
+
+  const loginProvider = getLoginProvider(source) ?? existing?.loginProvider;
+  if (loginProvider) {
+    record.loginProvider = loginProvider;
+  }
 
   await setDoc(reference, record, { merge: true });
 

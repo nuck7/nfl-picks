@@ -4,7 +4,7 @@ import { CurrentUserContext, CurrentWeekContext } from '../../App';
 import { setOwnName } from '../../resources/players';
 import { getSocialProviderLabel, hasPasswordSignIn, requestEmailChange } from '../../resources/auth';
 import { getPlayerPayments } from '../../resources/payments';
-import { getSeasonWeeks } from '../../resources/weeks';
+import { getSeasonWeeks, getWeekWinnerIds } from '../../resources/weeks';
 import { CurrentUser, CurrentWeek, WeekPayment, WeekSettings } from '../../types';
 import { getAuthErrorMessage } from '../../utils/authErrors';
 import { parseWeekId } from '../../utils/espn';
@@ -117,8 +117,8 @@ const Profile = () => {
     // inferred here: a week counts only once an admin has confirmed it on the
     // Results tab, so an ungraded or unconfirmed week is simply absent.
     const weeksWon = seasonWeeks
-        .filter((week) => week.winnerPlayerId
-            && week.winnerPlayerId === currentUser.user?.id)
+        .filter((week) => !!currentUser.user
+            && getWeekWinnerIds(week).includes(currentUser.user.id))
         .map((week) => ({ week, number: parseWeekId(week.weekId)?.week ?? 0 }))
         .sort((a, b) => b.number - a.number)
 
